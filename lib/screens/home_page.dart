@@ -11,7 +11,7 @@ import 'package:astro_office/screens/search.dart';
 import 'package:astro_office/widgets/bottom_navigation_bar.dart';
 import 'package:astro_office/widgets/office_card.dart';
 import 'package:astro_office/widgets/reserved_office_card.dart';
-import 'package:astro_office/widgets/search_bar_no_shadow.dart';
+import 'package:astro_office/widgets/search_bar_without_icons.dart';
 import 'package:astro_office/widgets/shared_private_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -256,7 +256,7 @@ class _MyHomePageState extends State<MyHomePage> {
       children: [
         const Padding(
           padding: EdgeInsets.only(top: 10, bottom: 10, left: 10, right: 10),
-          child: SearchBarNoShadow(),
+          child: SearchBarWithoutIcons(), // Cambiado aquí
         ),
         SharedPrivateToggle(
           isSharedSelected: isSharedSelected,
@@ -295,6 +295,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   time: office['time']!,
                   day: office['day']!,
                   name: office['name']!,
+                  type: office['type']!,
                 ),
               );
             },
