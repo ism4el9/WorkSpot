@@ -197,7 +197,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                       Text(service['label']),
                     ],
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
@@ -217,7 +217,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                 Container(
                   height: 150,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
@@ -335,11 +335,11 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                       }
                     },
                     style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all(
+                      backgroundColor: WidgetStateProperty.all(
                           Theme.of(context).colorScheme.tertiary),
-                      foregroundColor: MaterialStateProperty.all(
+                      foregroundColor: WidgetStateProperty.all(
                           Theme.of(context).colorScheme.onTertiary),
-                      elevation: MaterialStateProperty.all(8),
+                      elevation: WidgetStateProperty.all(8),
                     ),
                     child: const Text('Reservar'),
                   ),

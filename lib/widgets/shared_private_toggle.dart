@@ -36,27 +36,31 @@ class SharedPrivateToggle extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          GestureDetector(
-            onTap: () {
-              onToggle(1);
-            },
-            child: Column(
-              children: [
-                Icon(
-                  Icons.group,
-                  color: isSharedSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.surfaceDim,
-                ),
-                Text(
-                  "Compartido",
-                  style: TextStyle(
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                onToggle(1);
+              },
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.group,
                     color: isSharedSelected
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.surfaceDim,
                   ),
-                ),
-              ],
+                  Text(
+                    "Compartido",
+                    style: TextStyle(
+                      color: isSharedSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surfaceDim,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           Container(
@@ -64,27 +68,31 @@ class SharedPrivateToggle extends StatelessWidget {
             width: 1,
             color: Theme.of(context).colorScheme.surfaceDim,
           ),
-          GestureDetector(
-            onTap: () {
-              onToggle(2);
-            },
-            child: Column(
-              children: [
-                Icon(
-                  Icons.person,
-                  color: isPrivateSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.surfaceDim,
-                ),
-                Text(
-                  "Privado",
-                  style: TextStyle(
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                onToggle(2);
+              },
+              borderRadius: const BorderRadius.horizontal(right: Radius.circular(20)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.person,
                     color: isPrivateSelected
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.surfaceDim,
                   ),
-                ),
-              ],
+                  Text(
+                    "Privado",
+                    style: TextStyle(
+                      color: isPrivateSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surfaceDim,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

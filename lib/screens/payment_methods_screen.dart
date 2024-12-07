@@ -6,7 +6,7 @@ class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
 
   @override
-  _PaymentMethodsScreenState createState() => _PaymentMethodsScreenState();
+  State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
 }
 
 class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {

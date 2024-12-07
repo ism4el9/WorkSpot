@@ -8,6 +8,7 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Future.delayed(const Duration(milliseconds: 2000), () {
+    if (context.mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -17,18 +18,19 @@ class SplashScreen extends StatelessWidget {
           ),
         ),
       );
-    });
+    }
+  });
 
     return Scaffold(
       // Cambiamos el fondo al gradiente radial
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: RadialGradient(
-            center: const Alignment(0.0, 0.0), // Centro del gradiente
+            center: Alignment(0.0, 0.0), // Centro del gradiente
             radius: 1.0, // Radio del gradiente
             colors: [
-              const Color(0xFFE0F7FA), // Azul claro similar al borde
-              const Color(0xFFB2EBF2), // Azul más oscuro
+              Color(0xFFE0F7FA), // Azul claro similar al borde
+              Color(0xFFB2EBF2), // Azul más oscuro
             ],
           ),
         ),

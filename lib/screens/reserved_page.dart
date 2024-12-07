@@ -164,7 +164,7 @@ class _ReservedPageState extends State<ReservedPage> {
               ),
               onChanged: (query) {
                 // Si necesitas lógica de búsqueda, agrégala aquí
-                print("Texto ingresado: $query");
+                //print("Texto ingresado: $query");
               },
             ),
           ),

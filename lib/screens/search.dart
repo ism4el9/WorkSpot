@@ -206,12 +206,12 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
       decoration: _neumorphicDecoration(false),
       child: TextField(
         controller: _sectorController,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           labelText: '¿En qué sector o edificio?',
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: Icon(Icons.search),
           border: InputBorder.none,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         ),
       ),
     );
@@ -238,7 +238,7 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
                     description: "Descripción genérica",
                     price: 50, // Agrega valores dinámicos si es necesario
                     schedule: "Por definir",
-                    services: [
+                    services: const [
                       {"label": "Wi-Fi", "icon": Icons.wifi},
                       {"label": "Café", "icon": Icons.coffee},
                     ], // Agrega servicios dinámicos si están disponibles
@@ -398,23 +398,23 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
     );
   }
 
-  Widget _buildActionButton(String label, VoidCallback onPressed) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: _neumorphicDecoration(false),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          ),
-          child: Text(label),
-        ),
-      ),
-    );
-  }
+  // Widget _buildActionButton(String label, VoidCallback onPressed) {
+  //   return Expanded(
+  //     child: Container(
+  //       margin: const EdgeInsets.symmetric(horizontal: 4),
+  //       decoration: _neumorphicDecoration(false),
+  //       child: ElevatedButton(
+  //         onPressed: onPressed,
+  //         style: ElevatedButton.styleFrom(
+  //           elevation: 0,
+  //           backgroundColor: Colors.transparent,
+  //           foregroundColor: Theme.of(context).colorScheme.onPrimary,
+  //         ),
+  //         child: Text(label),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   BoxDecoration _neumorphicDecoration(bool isPressed) {
     return BoxDecoration(

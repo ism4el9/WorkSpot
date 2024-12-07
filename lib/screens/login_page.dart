@@ -119,14 +119,24 @@ class LoginPage extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
+                    final email = _emailController.text;
+                    final password = _passwordController.text;
+
+                    if (email.isEmpty || password.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Por favor ingrese correo y contraseña.')),
+                      );
+                      return;
+                    }
+
                     if (!payment) {
-                      AuthService().login();
-                      Navigator.of(context).pop(true);
+                      await AuthService().login(email, password);
+                      if (context.mounted) Navigator.of(context).pop(true);
                     } else {
                       final result = await Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => const PaymentPage(totalPrice: 86)),
                       );
-                      AuthService().login();
+                      await AuthService().login(email, password);
                       if (result == true) {
                         if (context.mounted) {
                           Navigator.of(context).pop(true);
@@ -157,7 +167,12 @@ class LoginPage extends StatelessWidget {
                   );
 
                   if (result == true) {
-                    AuthService().login();
+                    final email = _emailController.text;
+                    final password = _passwordController.text;
+
+                    if (email.isNotEmpty && password.isNotEmpty) {
+                      await AuthService().login(email, password);
+                    }
                     if (context.mounted) {
                       Navigator.of(context).pop(true);
                     }

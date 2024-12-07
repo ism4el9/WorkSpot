@@ -149,20 +149,47 @@ class RegisterPage extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    if (!payment) {
-                      AuthService().login();
-                      Navigator.of(context).pop(true);
-                    } else {
-                      final result = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const PaymentPage(totalPrice: 86),
-                        ),
+                    final email = _emailController.text;
+                    final password = _passwordController.text;
+
+                    if (email.isEmpty || password.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Por favor completa todos los campos.')),
                       );
-                      AuthService().login();
-                      if (result == true) {
-                        if (context.mounted) {
+                      return;
+                    }
+
+                    try {
+                      await AuthService().register(email, password);
+                        if(context.mounted){
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Registro exitoso. Iniciando sesión...')),
+                        );
+                      }
+
+                      // Intentar iniciar sesión tras el registro
+                      await AuthService().login(email, password);
+
+                      if (!payment) {
+                        if(context.mounted) Navigator.of(context).pop(true);
+                      } else {
+                        var result = false;
+                        if(context.mounted){
+                          result = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const PaymentPage(totalPrice: 86),
+                          ),
+                        );
+                        }
+                        if (result == true && context.mounted) {
                           Navigator.of(context).pop(true);
                         }
+                      }
+                    } catch (e) {
+                      if(context.mounted){
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error durante el registro: $e')),
+                        );
                       }
                     }
                   },

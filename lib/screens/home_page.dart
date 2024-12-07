@@ -43,7 +43,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     // Inicia la variable isAuthenticated según el estado actual de AuthService
-    isUserLoggedIn = widget.authService.checkAuthentication();
+    isUserLoggedIn = widget.authService.isLoggedIn();
   }
 
   int _currentIndex = 0;
@@ -372,10 +372,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   }
                 },
                 style: ButtonStyle(
-                  elevation: MaterialStateProperty.all(3.0),
-                  backgroundColor: MaterialStateProperty.all(
+                  elevation: WidgetStateProperty.all(3.0),
+                  backgroundColor: WidgetStateProperty.all(
                       Theme.of(context).colorScheme.primary),
-                  foregroundColor: MaterialStateProperty.all(
+                  foregroundColor: WidgetStateProperty.all(
                       Theme.of(context).colorScheme.onPrimary),
                 ),
                 child: const Text('Inicia Sesión o Regístrate!'),
@@ -498,7 +498,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PaymentMethodsScreen(),
+                        builder: (context) => const PaymentMethodsScreen(),
                       ),
                     );
                   },
