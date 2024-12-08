@@ -530,8 +530,30 @@ class _MyHomePageState extends State<MyHomePage> {
                   leading: Icon(Icons.logout,
                       color: Theme.of(context).colorScheme.error),
                   title: const Text('Cerrar Sesión'),
-                  onTap: () {
-                    AuthService().logout();
+                  onTap: () async {
+                    final error = await AuthService().logout();
+
+                    if (error != null) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Error al cerrar sesión: $error'),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Sesión cerrada exitosamente.'),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    }
+
                     setState(() {
                       isUserLoggedIn = false;
                     });

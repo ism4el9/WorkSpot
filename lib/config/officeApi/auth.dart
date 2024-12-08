@@ -1,4 +1,6 @@
+import 'dart:io'; // Import necesario para manejar SocketException
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'error_handler.dart';
 
 class AuthService {
   final supabase = Supabase.instance.client;
@@ -10,41 +12,66 @@ class AuthService {
   }
 
   // Registrar un nuevo usuario
-  Future<void> register(String email, String password) async {
+  Future<String?> register(String email, String password) async {
     try {
-      final response = await supabase.auth.signUp(email: email, password: password);
+      final response = await supabase.auth
+          .signUp(email: email, password: password)
+          .timeout(
+            const Duration(seconds: 5), // Tiempo máximo de espera
+            onTimeout: () {
+              throw Exception('La solicitud de registro ha tardado demasiado. Por favor, inténtalo de nuevo.');
+            },
+          );
       if (response.user == null) {
-        throw Exception('Error al registrar: No se pudo crear el usuario.');
+        throw const AuthException('Error al registrar: No se pudo crear el usuario.');
       }
-      //print('Usuario registrado: ${response.user?.email}');
+      return null; // Éxito
+    } on SocketException {
+      return ErrorHandler.handleError(NetworkException('No hay conexión a internet.'));
     } catch (e) {
-      //print('Error en registro: $e');
-      rethrow;
+      return ErrorHandler.handleError(e);
     }
   }
 
   // Iniciar sesión
-  Future<void> login(String email, String password) async {
+  Future<String?> login(String email, String password) async {
     try {
-      final response = await supabase.auth.signInWithPassword(email: email, password: password);
+      final response = await supabase.auth
+          .signInWithPassword(email: email, password: password)
+          .timeout(
+            const Duration(seconds: 5), // Tiempo máximo de espera
+            onTimeout: () {
+              throw Exception('La solicitud de inicio de sesión ha tardado demasiado. Por favor, inténtalo de nuevo.');
+            },
+          );
       if (response.session == null) {
-        throw Exception('Error al iniciar sesión: Usuario o contraseña incorrectos.');
+        throw const AuthException('Error al iniciar sesión: Usuario o contraseña incorrectos.');
       }
-      //print('Sesión iniciada para: ${response.user?.email}');
+      //print(response);
+      return null; // Éxito
+    } on SocketException {
+      return ErrorHandler.handleError(NetworkException('No hay conexión a internet.'));
     } catch (e) {
-      //print('Error en login: $e');
-      rethrow;
+      return ErrorHandler.handleError(e);
     }
   }
 
   // Cerrar sesión
-  Future<void> logout() async {
+  Future<String?> logout() async {
     try {
-      await supabase.auth.signOut();
-      //print('Sesión cerrada.');
+      await supabase.auth
+          .signOut()
+          .timeout(
+            const Duration(seconds: 5), // Tiempo máximo de espera
+            onTimeout: () {
+              throw Exception('La solicitud de cierre de sesión ha tardado demasiado. Por favor, inténtalo de nuevo.');
+            },
+          );
+      return null; // Éxito
+    } on SocketException {
+      return ErrorHandler.handleError(NetworkException('No hay conexión a internet.'));
     } catch (e) {
-      //print('Error en logout: $e');
-      rethrow;
+      return ErrorHandler.handleError(e);
     }
   }
 

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 class LoginPage extends StatelessWidget {
   final bool payment;
   LoginPage({super.key, required this.payment});
-  
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -33,7 +33,8 @@ class LoginPage extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               'Inicia sesión para continuar',
-              style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.tertiary),
+              style: TextStyle(
+                  fontSize: 16, color: Theme.of(context).colorScheme.tertiary),
             ),
             const SizedBox(height: 30),
 
@@ -119,27 +120,70 @@ class LoginPage extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
+                    FocusScope.of(context).unfocus();
                     final email = _emailController.text;
                     final password = _passwordController.text;
 
                     if (email.isEmpty || password.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Por favor ingrese correo y contraseña.')),
+                        const SnackBar(
+                            content:
+                                Text('Por favor ingrese correo y contraseña.')),
                       );
                       return;
                     }
 
                     if (!payment) {
-                      await AuthService().login(email, password);
-                      if (context.mounted) Navigator.of(context).pop(true);
+                      final error = await AuthService().login(email, password);
+
+                      if (error != null) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error al iniciar sesión: $error'),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Sesión iniciada exitosamente.'),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          if (context.mounted) Navigator.of(context).pop(true);
+                        }
+                      }
                     } else {
                       final result = await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const PaymentPage(totalPrice: 86)),
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const PaymentPage(totalPrice: 86)),
                       );
-                      await AuthService().login(email, password);
-                      if (result == true) {
+                      final error = await AuthService().login(email, password);
+
+                      if (error != null) {
                         if (context.mounted) {
-                          Navigator.of(context).pop(true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error al iniciar sesión: $error'),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Sesión iniciada exitosamente.'),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          if (context.mounted && result == true) {
+                            Navigator.of(context).pop(true);
+                          }
                         }
                       }
                     }
@@ -162,21 +206,11 @@ class LoginPage extends StatelessWidget {
             Center(
               child: GestureDetector(
                 onTap: () async {
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => RegisterPage(payment: payment)),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => RegisterPage(payment: payment),
+                    ),
                   );
-
-                  if (result == true) {
-                    final email = _emailController.text;
-                    final password = _passwordController.text;
-
-                    if (email.isNotEmpty && password.isNotEmpty) {
-                      await AuthService().login(email, password);
-                    }
-                    if (context.mounted) {
-                      Navigator.of(context).pop(true);
-                    }
-                  }
                 },
                 child: const Text(
                   '¿No tienes cuenta? Regístrate',
