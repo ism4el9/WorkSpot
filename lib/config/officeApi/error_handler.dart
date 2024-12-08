@@ -12,24 +12,27 @@ class ErrorHandler {
     if (error is AuthException) {
       return _authErrorMessages[error.message] ?? 'Error de autenticación: ${error.message}';
     }
+    if (error is Exception) {
+      return _authErrorMessages['$error'] ?? '$error';
+    }
 
     if (error is NetworkException) {
       return 'Error de red: Verifica tu conexión a internet.';
     }
 
     // Error desconocido
-    return 'Ha ocurrido un error inesperado.';
+    return '$error';
   }
 
   // Mapa de mensajes de error comunes para errores de autenticación
   static const Map<String, String> _authErrorMessages = {
-    'Invalid login credentials': 'Credenciales de inicio de sesión inválidas.',
-    'User already registered': 'El usuario ya está registrado.',
-    'Email not confirmed': 'El correo electrónico no ha sido confirmado.',
-    'Password too short': 'La contraseña es demasiado corta.',
-    'User not found': 'El usuario no fue encontrado.',
-    'Access token expired': 'El token de acceso ha expirado.',
-    'Invalid email format': 'El formato del correo electrónico es inválido.',
+    'Invalid login credentials.': 'Credenciales de inicio de sesión inválidas.',
+    'User already registered.': 'El usuario ya está registrado.',
+    'Email not confirmed.': 'El correo electrónico no ha sido confirmado.',
+    'Password should be at least 6 characters.': 'La contraseña tiene que tener al menos 6 caracteres.',
+    'User not found.': 'El usuario no fue encontrado.',
+    'Access token expired.': 'El token de acceso ha expirado.',
+    'Invalid email format.': 'El formato del correo electrónico es inválido.',
   };
 }
 
