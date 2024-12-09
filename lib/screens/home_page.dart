@@ -1,5 +1,5 @@
 import 'package:astro_office/config/officeApi/auth.dart';
-import 'package:astro_office/config/officeApi/office_all.dart';
+import 'package:astro_office/config/officeApi/error_handler.dart';
 import 'package:astro_office/config/theme/theme_provider.dart';
 import 'package:astro_office/screens/favorites_page.dart';
 import 'package:astro_office/screens/login_page.dart';
@@ -16,6 +16,7 @@ import 'package:astro_office/widgets/shared_private_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ignore: must_be_immutable
 class MyHomePage extends StatefulWidget {
@@ -37,12 +38,42 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late bool isUserLoggedIn;
   late int _currentIndex;
+  List<Map<String, dynamic>> reservedOffices = [];
+  List<Map<String, dynamic>> allOffices = [];
+  bool isLoadingReservations = true;
+  bool isLoadingOffices = true;
+  Map<String, dynamic>? userDetails;
+  String userName = '';
+  bool hasError = false;
+  String errorMessage = '';
+
   @override
   void initState() {
     super.initState();
     // Inicia la variable isAuthenticated según el estado actual de AuthService
     isUserLoggedIn = widget.authService.isLoggedIn();
     _currentIndex = widget.initialIndex;
+
+    if (isUserLoggedIn) {
+      fetchReservedOffices();
+      _loadUserDetails();
+    }
+    fetchAllOffices();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Si hubo un error, mostrar el SnackBar
+    if (hasError) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        print(errorMessage);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      });
+    }
   }
 
   void _onTabTapped(int index) {
@@ -55,13 +86,134 @@ class _MyHomePageState extends State<MyHomePage> {
   bool isSharedSelected = false;
   bool isPrivateSelected = false;
 
-  bool isDarkMode = false; // Estado del modo oscuro
-  String userName =
-      "Mao Astudillo"; // Nombre de usuario (por defecto es "Invitado")
+  bool isDarkMode = false;
+
+  Future<void> _loadUserDetails() async {
+    try {
+      final details = await AuthService().getUserDetails();
+      setState(() {
+        userDetails = details;
+        userName = details?['nombre'] ?? 'Usuario desconocido';
+      });
+    } catch (e) {
+      setState(() {
+        hasError = true;
+        errorMessage = ErrorHandler.handleError(e);
+      });
+    }
+  }
+
+  // Obtener oficinas reservadas
+  Future<void> fetchReservedOffices() async {
+    setState(() {
+      isLoadingReservations = true;
+    });
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw Exception('Usuario no autenticado.');
+
+      // Consulta para obtener reservas y sus oficinas relacionadas
+      final response = await Supabase.instance.client
+          .from('reservas')
+          .select('''
+          id,
+          nombre_reserva,
+          fecha_reserva,
+          hora_inicio,
+          hora_fin,
+          estado,
+          cancelado,
+          puestos,
+          oficinas (
+            nombre,
+            descripcion,
+            ubicacion,
+            imagen_perfil,
+            precio_por_hora,
+            tipo,
+            latitud,
+            longitud
+          )
+        ''')
+          .eq('usuario_id', int.parse(user.id))
+          .order('fecha_reserva', ascending: false);
+
+      final data = response as List<dynamic>;
+
+      // Combinar los datos de reservas con los de oficinas
+      reservedOffices = data.map((reservation) {
+        final office = reservation['oficinas'];
+        return {
+          'id': reservation['id'],
+          'nombre_reserva': reservation['nombre_reserva'],
+          'fecha_reserva': reservation['fecha_reserva'],
+          'hora_inicio': reservation['hora_inicio'],
+          'hora_fin': reservation['hora_fin'],
+          'estado': reservation['estado'],
+          'cancelado': reservation['cancelado'],
+          'puestos': reservation['puestos'],
+          'oficina_nombre': office['nombre'],
+          'oficina_descripcion': office['descripcion'],
+          'oficina_ubicacion': office['ubicacion'],
+          'oficina_imagen': office['imagen_perfil'],
+          'oficina_precio': office['precio_por_hora'],
+          'oficina_tipo': office['tipo'],
+          'oficina_lat': office['latitud'],
+          'oficina_long': office['longitud'],
+        };
+      }).toList();
+    } catch (e) {
+      setState(() {
+        hasError = true;
+        errorMessage = ErrorHandler.handleError(e);
+      });
+    } finally {
+      setState(() {
+        isLoadingReservations = false;
+      });
+    }
+  }
+
+  // Obtener todas las oficinas disponibles para reserva
+  Future<void> fetchAllOffices() async {
+    setState(() {
+      isLoadingOffices = true;
+    });
+
+    try {
+      final today = DateTime.now().toIso8601String().split('T').first;
+
+      final response = await Supabase.instance.client
+          .from('oficinas')
+          .select('*')
+          .filter('disponibilidad', 'cs',
+              '{"fecha": "$today"}'); // Verifica disponibilidad
+
+      allOffices = List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      setState(() {
+        hasError = true;
+        errorMessage = ErrorHandler.handleError(e);
+      });
+    } finally {
+      setState(() {
+        isLoadingOffices = false;
+      });
+    }
+  }
 
   // Método para filtrar las oficinas según el tipo seleccionado
-  List<Map<String, String>> get filteredOffices {
-    return OfficeAll().allOffices.where((office) {
+  List<Map<String, dynamic>> get filteredOffices {
+    return allOffices.where((office) {
+      if (isSharedSelected) return office['type'] == 'Compartido';
+      if (isPrivateSelected) return office['type'] == 'Privado';
+      return true;
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> get filteredReservedOffices {
+    return reservedOffices.where((office) {
       if (isSharedSelected) return office['type'] == 'Compartido';
       if (isPrivateSelected) return office['type'] == 'Privado';
       return true;
@@ -94,6 +246,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget homeBody() {
+    if (isLoadingOffices) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return Column(
       children: [
         Padding(
@@ -191,25 +346,26 @@ class _MyHomePageState extends State<MyHomePage> {
             itemBuilder: (context, index) {
               final office = filteredOffices[index];
               return GestureDetector(
-                onTap: () async {
-                  await Navigator.push(
+                onTap: () {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          OfficeDetailScreen(isUserLoggedIn: isUserLoggedIn),
+                      builder: (context) => OfficeDetailScreen(
+                          isUserLoggedIn: isUserLoggedIn,
+                          officeDetails: office),
                     ),
                   );
 
                   setState(() {
-                      isUserLoggedIn = widget.authService.isLoggedIn();
-                    });
+                    isUserLoggedIn = widget.authService.isLoggedIn();
+                  });
                 },
                 child: OfficeCard(
-                  imageUrl: office['imageUrl']!,
-                  title: office['title']!,
-                  description: office['description']!,
-                  price: office['price']!,
-                  type: office['type']!,
+                  imageUrl: office['imagen_perfil'] ?? '',
+                  title: office['nombre'] ?? '',
+                  description: office['descripcion'] ?? '',
+                  price: office['precio_por_hora']?.toString() ?? '',
+                  type: office['tipo'] ?? '',
                 ),
               );
             },
@@ -247,6 +403,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget reservedBody() {
+    if (!isUserLoggedIn) {
+      return const Center(
+        child: Text('Por favor, inicia sesión para ver tus reservas.'),
+      );
+    }
+
+    if (isLoadingReservations) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (reservedOffices.isEmpty) {
+      return const Center(
+        child: Text('No tienes reservas aún. ¡Haz tu primera reserva ahora!'),
+      );
+    }
     return Column(
       children: [
         const Padding(
@@ -271,26 +442,27 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: filteredOffices.length,
+            itemCount: filteredReservedOffices.length,
             itemBuilder: (context, index) {
-              final office = filteredOffices[index];
+              final office = filteredReservedOffices[index];
               return GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ReservationDetailScreen(),
+                      builder: (context) =>
+                          ReservationDetailScreen(reserveDetails: office),
                     ),
                   );
                 },
                 child: ReservedOfficeCard(
-                  imageUrl: office['imageUrl']!,
-                  title: office['title']!,
-                  asistants: office['asistants']!,
-                  time: office['time']!,
-                  day: office['day']!,
-                  name: office['name']!,
-                  type: office['type']!,
+                  imageUrl: office['oficina_imagen'] ?? '',
+                  title: office['oficina_nombre'] ?? '',
+                  asistants: office['puestos']?.toString() ?? '1',
+                  time: '${office['hora_inicio']} - ${office['hora_fin']}',
+                  day: office['fecha_reserva'] ?? '',
+                  name: office['nombre_reserva'] ?? '',
+                  type: office['oficina_tipo'] ?? '',
                 ),
               );
             },
@@ -362,8 +534,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
                   // Si el resultado es true, actualiza el estado de autenticación
                   setState(() {
-                      isUserLoggedIn = widget.authService.isLoggedIn();
-                    });
+                    isUserLoggedIn = widget.authService.isLoggedIn();
+                  });
                 },
                 style: ButtonStyle(
                   elevation: WidgetStateProperty.all(3.0),
@@ -490,7 +662,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PaymentMethodsScreen(),
+                        builder: (context) => const PaymentMethodsScreen(),
                       ),
                     );
                   },
@@ -528,8 +700,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                                'Error al cerrar sesión: $error'),
+                            content: Text('Error al cerrar sesión: $error'),
                             duration: const Duration(seconds: 3),
                           ),
                         );

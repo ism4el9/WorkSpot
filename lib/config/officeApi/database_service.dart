@@ -251,7 +251,7 @@ class DatabaseService {
         throw Exception('No se encontró el método de pago para eliminar.');
       }
 
-      print('Tarjeta eliminada con éxito. Respuesta: $response');
+      //print('Tarjeta eliminada con éxito. Respuesta: $response');
     } catch (e) {
       throw Exception('Error al intentar eliminar el método de pago: $e');
     }
