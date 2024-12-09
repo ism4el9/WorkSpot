@@ -1,3 +1,5 @@
+import 'package:astro_office/config/officeApi/auth.dart';
+import 'package:astro_office/screens/home_page.dart';
 import 'package:flutter/material.dart';
 import 'add_card_screen.dart'; // Pantalla para añadir tarjetas
 import 'payment_card.dart';   // Modelo de tarjeta de pago
@@ -48,7 +50,17 @@ class _PaymentPageState extends State<PaymentPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context); // Cierra el diálogo
-              Navigator.of(context).pop(true); // Regresa a la pantalla anterior
+              Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyHomePage(
+                                  authService: AuthService(),
+                                  results: false,
+                                  initialIndex: 1, // Usar el índice recibido
+                                ),
+                              ),
+                              (Route<dynamic> route) => false,
+                            ); // Regresa a la pantalla anterior
             },
             child: const Text("Perfecto!"),
           ),

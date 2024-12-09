@@ -1,4 +1,5 @@
 import 'package:astro_office/config/officeApi/auth.dart';
+import 'package:astro_office/screens/home_page.dart';
 import 'package:astro_office/screens/pay.dart';
 import 'package:astro_office/screens/register_page.dart';
 import 'package:flutter/material.dart';
@@ -153,7 +154,19 @@ class LoginPage extends StatelessWidget {
                               duration: Duration(seconds: 3),
                             ),
                           );
-                          if (context.mounted) Navigator.of(context).pop(true);
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyHomePage(
+                                  authService: AuthService(),
+                                  results: false,
+                                  initialIndex: 0, // Usar el índice recibido
+                                ),
+                              ),
+                              (Route<dynamic> route) => false,
+                            );
+                          }
                         }
                       }
                     } else {
@@ -182,7 +195,17 @@ class LoginPage extends StatelessWidget {
                             ),
                           );
                           if (context.mounted && result == true) {
-                            Navigator.of(context).pop(true);
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyHomePage(
+                                  authService: AuthService(),
+                                  results: false,
+                                  initialIndex: 0, // Usar el índice recibido
+                                ),
+                              ),
+                              (Route<dynamic> route) => false,
+                            );
                           }
                         }
                       }
