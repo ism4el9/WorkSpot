@@ -2,6 +2,7 @@ import 'package:astro_office/screens/login_page.dart';
 import 'package:astro_office/screens/pay.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+//API DE GOOGLE
 
 class OfficeDetailScreen extends StatefulWidget {
   const OfficeDetailScreen({
