@@ -70,27 +70,6 @@ class AuthService {
         },
       );
 
-      Future<int?> getUsuarioId() async {
-        try {
-          final currentUser =
-              getCurrentUser(); // Obtiene el usuario autenticado
-          if (currentUser == null) {
-            throw Exception('Usuario no autenticado.');
-          }
-
-          // Busca el usuario en la tabla 'usuarios' utilizando el 'auth_user_id'
-          final response = await supabase
-              .from('usuarios')
-              .select('id') // Selecciona solo el ID
-              .eq('auth_user_id', currentUser.id) // Coincide el auth_user_id
-              .single(); // Devuelve un solo resultado
-
-          return response['id'] as int; // Devuelve el ID del usuario
-        } catch (e) {
-          throw Exception(
-              'Error al obtener el usuario_id: ${ErrorHandler.handleError(e)}');
-        }
-      }
 
       return null; // Éxito
     } on SocketException {

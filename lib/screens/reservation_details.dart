@@ -4,22 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 class ReservationDetailScreen extends StatelessWidget {
   const ReservationDetailScreen({
     super.key,
-    this.title = 'Carcelen, Edificio EPIQ',
-    this.address = 'Av. Jaime Roldós Aguilera',
-    this.price = '86',
-    this.reservationDate = '29 de Octubre',
-    this.reservationTime = '12:00 am - 04:00 pm',
-    this.reservationName = 'Mao Astudillo',
-    this.attendeesCount = '7',
+    required this.reserveDetails,
   });
 
-  final String title;
-  final String address;
-  final String price;
-  final String reservationDate;
-  final String reservationTime;
-  final String reservationName;
-  final String attendeesCount;
+  final Map<String, dynamic> reserveDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +80,7 @@ class ReservationDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      reserveDetails['nombre'],
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -101,7 +89,7 @@ class ReservationDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      address,
+                      reserveDetails['oficina_ubicacion'],
                       style: const TextStyle(fontSize: 16),
                     ),
                   ],
@@ -132,7 +120,7 @@ class ReservationDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Costo Total: \$$price',
+                      'Costo Total: \$${reserveDetails['oficina_precio']}',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -158,7 +146,7 @@ class ReservationDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Día: $reservationDate',
+                          'Día: ${reserveDetails['fecha_reserva']}',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ],
@@ -173,7 +161,7 @@ class ReservationDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Hora: $reservationTime',
+                          'Hora: ${reserveDetails['hora_inicio']} - ${reserveDetails['hora_fin']}',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ],
@@ -188,7 +176,7 @@ class ReservationDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Reservado a nombre de: $reservationName',
+                          'Reservado a nombre de: ${reserveDetails['nombre_reserva']}',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ],
@@ -203,7 +191,7 @@ class ReservationDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Cantidad de asistentes: $attendeesCount',
+                          'Cantidad de asistentes: ${reserveDetails['puestos']}',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ],
@@ -331,14 +319,7 @@ class ReservationDetailScreen extends StatelessWidget {
                 elevation: 10,
               ),
               child: const Text('Cancelar Reserva'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // Regresa al menú principal
-              },
-              style: ElevatedButton.styleFrom(elevation: 10),
-              child: const Text('Volver a Reservas'),
-            ),
+            )
           ],
         ),
       ),

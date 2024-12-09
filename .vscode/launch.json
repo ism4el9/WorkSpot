@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "workspot",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "workspot (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "workspot (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "astro_office",
+            "cwd": "astro_office",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "astro_office (profile mode)",
+            "cwd": "astro_office",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "astro_office (release mode)",
+            "cwd": "astro_office",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}

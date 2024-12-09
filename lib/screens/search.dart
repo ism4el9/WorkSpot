@@ -231,17 +231,8 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => OfficeDetailScreen(
-                    isUserLoggedIn:
-                        false, // Actualiza este valor según tu lógica
-                    title: office["edificio"] ?? "Sin título",
-                    address: office["direccion"] ?? "Sin dirección",
-                    description: "Descripción genérica",
-                    price: 50, // Agrega valores dinámicos si es necesario
-                    schedule: "Por definir",
-                    services: const [
-                      {"label": "Wi-Fi", "icon": Icons.wifi},
-                      {"label": "Café", "icon": Icons.coffee},
-                    ], // Agrega servicios dinámicos si están disponibles
+                    isUserLoggedIn:AuthService().isLoggedIn(),
+                    officeDetails: office, // Agrega servicios dinámicos si están disponibles
                   ),
                 ),
               );
