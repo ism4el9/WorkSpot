@@ -21,17 +21,14 @@ import 'package:provider/provider.dart';
 class MyHomePage extends StatefulWidget {
   final AuthService authService;
   bool results;
+  final int initialIndex; // Índice inicial para seleccionar la pestaña
 
-  MyHomePage({super.key, required this.authService, required this.results});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+  MyHomePage({
+    super.key,
+    required this.authService,
+    required this.results,
+    this.initialIndex = 0, // Valor predeterminado: pestaña "Home"
+  });
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -39,14 +36,14 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late bool isUserLoggedIn;
+  late int _currentIndex;
   @override
   void initState() {
     super.initState();
     // Inicia la variable isAuthenticated según el estado actual de AuthService
     isUserLoggedIn = widget.authService.isLoggedIn();
+    _currentIndex = widget.initialIndex;
   }
-
-  int _currentIndex = 0;
 
   void _onTabTapped(int index) {
     setState(() {
@@ -195,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
               final office = filteredOffices[index];
               return GestureDetector(
                 onTap: () async {
-                  final result = await Navigator.push(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
@@ -203,11 +200,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   );
 
-                  if (result == true) {
-                    setState(() {
-                      isUserLoggedIn = true;
+                  setState(() {
+                      isUserLoggedIn = widget.authService.isLoggedIn();
                     });
-                  }
                 },
                 child: OfficeCard(
                   imageUrl: office['imageUrl']!,
@@ -360,17 +355,15 @@ class _MyHomePageState extends State<MyHomePage> {
             if (!isUserLoggedIn) ...[
               ElevatedButton(
                 onPressed: () async {
-                  final result = await Navigator.of(context).push(
+                  await Navigator.of(context).push(
                     MaterialPageRoute(
                         builder: (context) => LoginPage(payment: false)),
                   );
 
                   // Si el resultado es true, actualiza el estado de autenticación
-                  if (result == true) {
-                    setState(() {
-                      isUserLoggedIn = true;
+                  setState(() {
+                      isUserLoggedIn = widget.authService.isLoggedIn();
                     });
-                  }
                 },
                 style: ButtonStyle(
                   elevation: WidgetStateProperty.all(3.0),
@@ -454,7 +447,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       color: Theme.of(context).colorScheme.tertiary),
                   title: const Text('Guardados'),
                   onTap: () async {
-                    final result = await Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
@@ -462,11 +455,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     );
 
-                    if (result == true) {
-                      setState(() {
-                        isUserLoggedIn = true;
-                      });
-                    }
+                    setState(() {
+                      isUserLoggedIn = widget.authService.isLoggedIn();
+                    });
                   },
                 ),
               ),
