@@ -15,7 +15,6 @@ class AddCardScreen extends StatefulWidget {
 
 class _AddCardScreenState extends State<AddCardScreen> {
   final _formKey = GlobalKey<FormState>();
-  final DatabaseService _databaseService = DatabaseService();
 
   // Controladores para los campos
   final TextEditingController _nameController = TextEditingController();
@@ -62,12 +61,15 @@ class _AddCardScreenState extends State<AddCardScreen> {
 
         // Enviar el objeto a Supabase
         await DatabaseService().addMetodoPago(newCard);
-        Navigator.pop(context, true); // Regresar con éxito
+        if (context.mounted) Navigator.pop(context, true); // Regresar con éxito
       } catch (error) {
         // Mostrar error al usuario
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al guardar la tarjeta: $error')),
         );
+        }
+        
       }
     }
   }

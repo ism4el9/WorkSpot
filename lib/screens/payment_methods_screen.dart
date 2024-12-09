@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:astro_office/config/officeApi/database_service.dart';
 import 'package:astro_office/config/officeApi/auth.dart';
 import 'add_card_screen.dart';
-import 'payment_card.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
+  const PaymentMethodsScreen({super.key});
+
   @override
-  _PaymentMethodsScreenState createState() => _PaymentMethodsScreenState();
+  State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
 }
 
 class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
@@ -48,33 +49,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   // Agregar una nueva tarjeta
-  Future<void> _addCard(PaymentCard newCard) async {
-    try {
-      final userId = await _authService.getUsuarioId();
-
-      // Inserta la nueva tarjeta en la base de datos
-      await _databaseService.addMetodoPago({
-        'usuario_id': userId,
-        'proveedor': newCard.provider,
-        'numero_enmascarado': newCard.cardNumber,
-        'fecha_vencimiento': newCard.expiryDate,
-        'tipo': 'Crédito', // Cambia si manejas otros tipos
-        'es_predeterminado': false,
-      });
-
-      await _loadCards(); // Realiza el refresh automáticamente
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tarjeta añadida con éxito.')),
-      );
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al agregar tarjeta: $error')),
-        );
-      }
-    }
-  }
 
   // Eliminar una tarjeta
   Future<void> _deleteCard(int cardId) async {
@@ -84,7 +58,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
       // Recargar tarjetas después de eliminar
       await _loadCards();
-
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tarjeta eliminada con éxito.')),
       );

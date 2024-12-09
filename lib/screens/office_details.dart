@@ -6,12 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 class OfficeDetailScreen extends StatefulWidget {
   const OfficeDetailScreen({
     super.key,
-    this.title = 'Carcelen, Edificio EPIQ',
-    this.address = 'Carcelen',
-    this.description =
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-    this.price = 43,
-    this.schedule = 'Por definir',
+    required this.officeDetails,
     this.services = const [
       {'label': 'Wi-Fi', 'icon': Icons.wifi},
       {'label': 'Impresora', 'icon': Icons.print},
@@ -23,13 +18,8 @@ class OfficeDetailScreen extends StatefulWidget {
     required this.isUserLoggedIn,
   });
 
-  final String title;
-  final String address;
-  final String description;
-  final num price;
-  final String schedule;
+  final Map<String, dynamic> officeDetails;
   final List<Map<String, dynamic>> services;
-
   final bool isUserLoggedIn;
 
   @override
@@ -92,7 +82,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
   Widget build(BuildContext context) {
     // Calculamos el total según las horas seleccionadas
     final int totalHours = selectedExitTime.hour - selectedEntryTime.hour;
-    final num totalPrice = widget.price * totalHours;
+    final num totalPrice = widget.officeDetails['precio_por_hora'] * totalHours;
 
     return Scaffold(
       appBar: AppBar(
@@ -136,7 +126,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.title,
+                  widget.officeDetails['nombre'],
                   style: GoogleFonts.firaSans(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -144,7 +134,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(widget.address),
+                Text(widget.officeDetails['ubicacion']),
               ],
             ),
           ),
@@ -154,7 +144,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
           _buildNeumorphicContainer(
             context,
             child: Text(
-              widget.description,
+              widget.officeDetails['descripcion'],
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
@@ -165,7 +155,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
           _buildNeumorphicContainer(
             context,
             child: Text(
-              "Precio: \$${widget.price}/h",
+              "Precio: \$${widget.officeDetails['precio_por_hora']}/h",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -229,7 +219,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                             color: Theme.of(context).colorScheme.tertiary),
                         const SizedBox(height: 20),
                         Text(
-                          'Ubicación: ${widget.address}',
+                          'Ubicación: ${widget.officeDetails['ubicacion']}',
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 16),
                         ),
