@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 // ignore: must_be_immutable
 class MyHomePage extends StatefulWidget {
@@ -39,7 +40,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late bool isUserLoggedIn;
   late int _currentIndex;
   List<Map<String, dynamic>> reservedOffices = [];
-  List<Map<String, dynamic>> allOffices = [];
+  List<dynamic> allOffices = [];
   bool isLoadingReservations = true;
   bool isLoadingOffices = true;
   Map<String, dynamic>? userDetails;
@@ -91,6 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _loadUserDetails() async {
     try {
       final details = await AuthService().getUserDetails();
+      print('Hola $details');
       setState(() {
         userDetails = details;
         userName = details?['nombre'] ?? 'Usuario desconocido';
@@ -114,9 +116,8 @@ class _MyHomePageState extends State<MyHomePage> {
       if (user == null) throw Exception('Usuario no autenticado.');
 
       // Consulta para obtener reservas y sus oficinas relacionadas
-      final response = await Supabase.instance.client
-          .from('reservas')
-          .select('''
+      final response =
+          await Supabase.instance.client.from('reservas').select('''
           id,
           nombre_reserva,
           fecha_reserva,
@@ -135,12 +136,10 @@ class _MyHomePageState extends State<MyHomePage> {
             latitud,
             longitud
           )
-        ''')
-          .eq('usuario_id', int.parse(user.id))
-          .order('fecha_reserva', ascending: false);
-
+        ''').eq('usuario_id', user.id).order('fecha_reserva', ascending: false);
+      print('RESERVED $response');
       final data = response as List<dynamic>;
-
+      print('RESERVED DATA $data');
       // Combinar los datos de reservas con los de oficinas
       reservedOffices = data.map((reservation) {
         final office = reservation['oficinas'];
@@ -182,15 +181,77 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     try {
-      final today = DateTime.now().toIso8601String().split('T').first;
+      final today =
+          DateFormat('EEEE', 'es_ES') // Obtener el día de la semana en español
+              .format(DateTime.now())
+              .toLowerCase(); // Ejemplo: "lunes", "martes", etc.
+      print('today $today');
+      final currentTime = DateTime.now();
+      print('currentTime $currentTime');
+      final response =
+          await Supabase.instance.client.from('oficinas').select('*');
 
-      final response = await Supabase.instance.client
-          .from('oficinas')
-          .select('*')
-          .filter('disponibilidad', 'cs',
-              '{"fecha": "$today"}'); // Verifica disponibilidad
+      final data = response as List<dynamic>;
 
-      allOffices = List<Map<String, dynamic>>.from(response);
+      print('All $response');
+      allOffices = data.where((office) {
+        final disponibilidad =
+            office['disponibilidad'] as Map<String, dynamic>?;
+
+        if (disponibilidad == null || disponibilidad.isEmpty) {
+          return false; // No hay información de disponibilidad
+        }
+
+        final daysOfWeek = [
+          'lunes',
+          'martes',
+          'miércoles',
+          'jueves',
+          'viernes',
+          'sábado',
+          'domingo'
+        ];
+        final todayIndex = daysOfWeek.indexOf(today); // Índice del día actual
+
+        // Verificar disponibilidad desde hoy en adelante
+        for (int i = 0; i < daysOfWeek.length; i++) {
+          final dayIndex = (todayIndex + i) %
+              daysOfWeek.length; // Avanzar ciclicamente en la semana
+          final dayName = daysOfWeek[dayIndex];
+
+          final horarios = disponibilidad[dayName] as List<dynamic>?;
+          if (horarios == null || horarios.isEmpty) {
+            continue; // No hay horarios para este día
+          }
+
+          if (i == 0) {
+            // Verificar horarios disponibles para el día actual después de la hora actual
+            final currentTime = DateTime.now();
+            final hasAvailabilityToday = horarios.any((horario) {
+              final inicio = DateFormat('HH:mm').parse(horario['inicio']);
+              final estado = horario['estado'];
+              return inicio.isAfter(currentTime) && estado == 'disponible';
+            });
+
+            if (hasAvailabilityToday) {
+              return true;
+            }
+          } else {
+            // Verificar horarios disponibles en días futuros
+            final hasAvailabilityFuture = horarios.any((horario) {
+              final estado = horario['estado'];
+              return estado == 'disponible';
+            });
+
+            if (hasAvailabilityFuture) {
+              return true;
+            }
+          }
+        }
+
+        return false; // No hay horarios disponibles desde hoy en adelante
+      }).toList();
+      print('filtered $allOffices');
     } catch (e) {
       setState(() {
         hasError = true;
@@ -204,7 +265,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // Método para filtrar las oficinas según el tipo seleccionado
-  List<Map<String, dynamic>> get filteredOffices {
+  List<dynamic> get filteredOffices {
     return allOffices.where((office) {
       if (isSharedSelected) return office['type'] == 'Compartido';
       if (isPrivateSelected) return office['type'] == 'Privado';
@@ -361,7 +422,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                 },
                 child: OfficeCard(
-                  imageUrl: office['imagen_perfil'] ?? '',
+                  imageUrl:
+                      office['imagen_perfil'] ?? 'assets/default_office.jpg',
                   title: office['nombre'] ?? '',
                   description: office['descripcion'] ?? '',
                   price: office['precio_por_hora']?.toString() ?? '',

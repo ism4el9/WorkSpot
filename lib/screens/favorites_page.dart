@@ -63,8 +63,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
           .from('favoritos')
           .select(
               'oficina_id, oficinas(*)') // Obtiene datos de la tabla oficinas relacionada
-          .eq('usuario_id',
-              int.parse(user.id)); // Relaciona con el usuario actual
+          .eq('usuario_id',user.id); // Relaciona con el usuario actual
 
       final data = response as List<dynamic>;
       favoriteOffices =
