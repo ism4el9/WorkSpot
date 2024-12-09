@@ -1,7 +1,7 @@
 import 'package:astro_office/config/officeApi/error_handler.dart';
 import 'package:astro_office/screens/office_details.dart';
 import 'package:astro_office/widgets/mini_office_card.dart';
-import 'package:astro_office/widgets/search_bar_no_shadow.dart';
+import 'package:astro_office/widgets/search_bar_without_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -83,8 +83,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
   // Método para filtrar las oficinas según el tipo seleccionado
   List<Map<String, dynamic>> get filteredOffices {
     return favoriteOffices.where((office) {
-      if (isSharedSelected) return office['tipo'] == 'compartido';
-      if (isPrivateSelected) return office['tipo'] == 'privada';
+      if (isSharedSelected) return office['tipo'] == 'Compartido';
+      if (isPrivateSelected) return office['tipo'] == 'Privado';
       return true;
     }).toList();
   }
@@ -101,7 +101,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         children: [
           const Padding(
             padding: EdgeInsets.only(bottom: 10, left: 10, right: 10),
-            child: SearchBarNoShadow(),
+            child: SearchBarWithoutIcons(),
           ),
           widget.isUserLoggedIn
               ? isLoading

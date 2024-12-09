@@ -267,16 +267,16 @@ class _MyHomePageState extends State<MyHomePage> {
   // Método para filtrar las oficinas según el tipo seleccionado
   List<dynamic> get filteredOffices {
     return allOffices.where((office) {
-      if (isSharedSelected) return office['type'] == 'Compartido';
-      if (isPrivateSelected) return office['type'] == 'Privado';
+      if (isSharedSelected) return office['tipo'] == 'Compartido';
+      if (isPrivateSelected) return office['tipo'] == 'Privado';
       return true;
     }).toList();
   }
 
   List<Map<String, dynamic>> get filteredReservedOffices {
     return reservedOffices.where((office) {
-      if (isSharedSelected) return office['type'] == 'Compartido';
-      if (isPrivateSelected) return office['type'] == 'Privado';
+      if (isSharedSelected) return office['tipo'] == 'Compartido';
+      if (isPrivateSelected) return office['tipo'] == 'Privado';
       return true;
     }).toList();
   }
@@ -679,7 +679,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: ListTile(
                   leading: Icon(Icons.bookmarks_rounded,
                       color: Theme.of(context).colorScheme.tertiary),
-                  title: const Text('Guardados'),
+                  title: const Text('Favoritos'),
                   onTap: () async {
                     await Navigator.push(
                       context,
