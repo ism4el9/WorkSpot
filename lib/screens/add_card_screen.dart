@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:astro_office/config/officeApi/database_service.dart';
 import 'payment_card.dart';
+import 'package:astro_office/config/officeApi/auth.dart';
 
 class AddCardScreen extends StatefulWidget {
   final PaymentCard? existingCard;
@@ -13,6 +15,7 @@ class AddCardScreen extends StatefulWidget {
 
 class _AddCardScreenState extends State<AddCardScreen> {
   final _formKey = GlobalKey<FormState>();
+  final DatabaseService _databaseService = DatabaseService();
 
   // Controladores para los campos
   final TextEditingController _nameController = TextEditingController();
@@ -36,15 +39,36 @@ class _AddCardScreenState extends State<AddCardScreen> {
   }
 
   // Método para guardar la tarjeta
-  void _saveCard() {
+  void _saveCard() async {
     if (_formKey.currentState!.validate()) {
-      final newCard = PaymentCard(
-        provider: _selectedProvider!,
-        cardNumber: _cardNumberController.text,
-        expiryDate: "${_monthController.text}/${_yearController.text.substring(2)}",
-        holderName: _nameController.text,
-      );
-      Navigator.pop(context, newCard);
+      try {
+        final userId = await AuthService()
+            .currentUserId(); // Obtener el ID del usuario autenticado
+
+        // Construir la fecha en formato `YYYY-MM-DD`
+        final expiryDate =
+            "20${_yearController.text.padLeft(2, '0')}-${_monthController.text.padLeft(2, '0')}-01";
+
+        // Crear el objeto que coincide con las columnas de `metodos_pago`
+        final newCard = {
+          "usuario_id": userId,
+          "tipo": "Crédito", // Cambiar si necesitas otro valor
+          "numero_enmascarado":
+              "**** **** **** ${_cardNumberController.text.substring(_cardNumberController.text.length - 4)}",
+          "proveedor": _selectedProvider!,
+          "fecha_vencimiento": expiryDate,
+          "es_predeterminado": false, // Por defecto no es predeterminado
+        };
+
+        // Enviar el objeto a Supabase
+        await DatabaseService().addMetodoPago(newCard);
+        Navigator.pop(context, true); // Regresar con éxito
+      } catch (error) {
+        // Mostrar error al usuario
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar la tarjeta: $error')),
+        );
+      }
     }
   }
 
@@ -96,7 +120,8 @@ class _AddCardScreenState extends State<AddCardScreen> {
                   child: DropdownButtonFormField<String>(
                     value: _selectedProvider,
                     items: ['Visa', 'MasterCard', 'AmEx']
-                        .map((provider) => DropdownMenuItem(value: provider, child: Text(provider)))
+                        .map((provider) => DropdownMenuItem(
+                            value: provider, child: Text(provider)))
                         .toList(),
                     onChanged: (value) => setState(() {
                       _selectedProvider = value;
@@ -105,7 +130,8 @@ class _AddCardScreenState extends State<AddCardScreen> {
                       labelText: 'Proveedor',
                       border: InputBorder.none,
                     ),
-                    validator: (value) => value == null ? 'Selecciona un proveedor' : null,
+                    validator: (value) =>
+                        value == null ? 'Selecciona un proveedor' : null,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -121,7 +147,9 @@ class _AddCardScreenState extends State<AddCardScreen> {
                       prefixIcon: Icon(Icons.person),
                       border: InputBorder.none,
                     ),
-                    validator: (value) => value == null || value.isEmpty ? 'Campo requerido' : null,
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Campo requerido'
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -201,7 +229,9 @@ class _AddCardScreenState extends State<AddCardScreen> {
                             border: InputBorder.none,
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty || int.tryParse(value)! < 0) {
+                            if (value == null ||
+                                value.isEmpty ||
+                                int.tryParse(value)! < 0) {
                               return "Año inválido";
                             }
                             return null;

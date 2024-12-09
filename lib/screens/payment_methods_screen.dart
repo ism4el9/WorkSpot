@@ -1,126 +1,154 @@
 import 'package:flutter/material.dart';
+import 'package:astro_office/config/officeApi/database_service.dart';
+import 'package:astro_office/config/officeApi/auth.dart';
 import 'add_card_screen.dart';
 import 'payment_card.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
-  const PaymentMethodsScreen({super.key});
-
   @override
-  State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
+  _PaymentMethodsScreenState createState() => _PaymentMethodsScreenState();
 }
 
 class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
-  final List<PaymentCard> paymentCards = [];
+  final DatabaseService _databaseService = DatabaseService();
+  final AuthService _authService = AuthService();
+  List<Map<String, dynamic>> _cards = [];
+  bool _isLoading = true;
 
-  void _navigateToAddCardScreen([PaymentCard? card]) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddCardScreen(existingCard: card),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadCards();
+  }
 
-    if (result is PaymentCard) {
-      setState(() {
-        if (card != null) {
-          // Si es una edición, reemplaza la tarjeta existente
-          final index = paymentCards.indexOf(card);
-          paymentCards[index] = result;
-        } else {
-          // Si es una nueva tarjeta, la agrega
-          paymentCards.add(result);
-        }
+  // Cargar métodos de pago del usuario actual
+  Future<void> _loadCards() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userId =
+          await _authService.getUsuarioId(); // Obtén el ID del usuario
+      _cards = await _databaseService
+          .fetchMetodosPagoByUser(userId); // Carga las tarjetas
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar métodos de pago: $error'),
+          ),
+        );
+      }
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  // Agregar una nueva tarjeta
+  Future<void> _addCard(PaymentCard newCard) async {
+    try {
+      final userId = await _authService.getUsuarioId();
+
+      // Inserta la nueva tarjeta en la base de datos
+      await _databaseService.addMetodoPago({
+        'usuario_id': userId,
+        'proveedor': newCard.provider,
+        'numero_enmascarado': newCard.cardNumber,
+        'fecha_vencimiento': newCard.expiryDate,
+        'tipo': 'Crédito', // Cambia si manejas otros tipos
+        'es_predeterminado': false,
       });
+
+      await _loadCards(); // Realiza el refresh automáticamente
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tarjeta añadida con éxito.')),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al agregar tarjeta: $error')),
+        );
+      }
     }
   }
 
-  void _removeCard(PaymentCard card) {
-    setState(() {
-      paymentCards.remove(card);
-    });
+  // Eliminar una tarjeta
+  Future<void> _deleteCard(int cardId) async {
+    try {
+      // Llamada al servicio para eliminar la tarjeta
+      await _databaseService.deleteMetodoPago(cardId);
+
+      // Recargar tarjetas después de eliminar
+      await _loadCards();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tarjeta eliminada con éxito.')),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al eliminar tarjeta: $error')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        elevation: 0,
         title: const Text('Métodos de Pago'),
       ),
-      body: paymentCards.isEmpty
-          ? Center(
-              child: Container(
-                decoration: _neumorphicDecoration(),
-                padding: const EdgeInsets.all(16),
-                child: const Text(
-                  'No hay métodos de pago agregados.',
-                  style: TextStyle(fontSize: 18),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          : ListView.builder(
-              itemCount: paymentCards.length,
-              itemBuilder: (context, index) {
-                final card = paymentCards[index];
-                return Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  decoration: _neumorphicDecoration(),
-                  child: ListTile(
-                    leading: Icon(
-                      card.provider == 'Visa' ? Icons.credit_card : Icons.payment,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: Text(
-                      '${card.provider} **** ${card.cardNumber.substring(card.cardNumber.length - 4)}',
-                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                    ),
-                    subtitle: Text(
-                      'Vence: ${card.expiryDate}\nTitular: ${card.holderName}',
-                      style: TextStyle(color: Theme.of(context).colorScheme.secondary),
-                    ),
-                    trailing: PopupMenuButton(
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _navigateToAddCardScreen(card);
-                        } else if (value == 'delete') {
-                          _removeCard(card);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Editar')),
-                        const PopupMenuItem(value: 'delete', child: Text('Eliminar')),
-                      ],
-                    ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _cards.isEmpty
+              ? Center(
+                  child: Text(
+                    'No hay métodos de pago agregados.',
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
-                );
-              },
-            ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadCards, // Permite hacer un "pull-to-refresh"
+                  child: ListView.builder(
+                    itemCount: _cards.length,
+                    itemBuilder: (context, index) {
+                      final card = _cards[index];
+                      return Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.credit_card),
+                          title: Text(card['numero_enmascarado']),
+                          subtitle: Text(
+                            '${card['proveedor']} - ${card['fecha_vencimiento']}',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              await _deleteCard(card['id']);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _navigateToAddCardScreen(),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddCardScreen(),
+            ),
+          );
+
+          if (result != null && result == true) {
+            await _loadCards(); // Recargar tarjetas si se añadió una
+          }
+        },
         child: const Icon(Icons.add),
       ),
-    );
-  }
-
-  BoxDecoration _neumorphicDecoration() {
-    return BoxDecoration(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          offset: const Offset(4, 4),
-          blurRadius: 6,
-        ),
-        BoxShadow(
-          color: Colors.white.withOpacity(0.7),
-          offset: const Offset(-4, -4),
-          blurRadius: 6,
-        ),
-      ],
     );
   }
 }

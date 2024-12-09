@@ -11,12 +11,40 @@ class AuthService {
     return session != null;
   }
 
+  // Obtener el ID del usuario autenticado desde la tabla usuarios
+  Future<int> getUsuarioId() async {
+    try {
+      final currentUser = getCurrentUser(); // Obtiene el usuario autenticado
+      if (currentUser == null) {
+        throw Exception('Usuario no autenticado.');
+      }
+
+      // Busca el usuario en la tabla 'usuarios' utilizando el 'auth_user_id'
+      final response = await supabase
+          .from('usuarios')
+          .select('id') // Selecciona solo el ID
+          .eq('auth_user_id', currentUser.id) // Coincide el auth_user_id
+          .single(); // Devuelve un solo resultado
+
+      return response['id'] as int; // Devuelve el ID del usuario
+    } catch (e) {
+      throw Exception(
+          'Error al obtener el usuario_id: ${ErrorHandler.handleError(e)}');
+    }
+  }
+
+  // Obtener el usuario actual
+  User? getCurrentUser() {
+    return supabase.auth.currentUser;
+  }
+
   // Registrar un nuevo usuario (incluyendo su nombre en public.usuarios)
   Future<String?> register(String email, String password, String nombre) async {
     try {
       // Registrar usuario en auth.users
-      final authResponse =
-          await supabase.auth.signUp(email: email.trim(), password: password.trim()).timeout(
+      final authResponse = await supabase.auth
+          .signUp(email: email.trim(), password: password.trim())
+          .timeout(
         const Duration(seconds: 5), // Tiempo máximo de espera
         onTimeout: () {
           throw Exception(
@@ -41,6 +69,28 @@ class AuthService {
               'La solicitud para agregar datos del usuario ha tardado demasiado. Por favor, inténtalo de nuevo.');
         },
       );
+
+      Future<int?> getUsuarioId() async {
+        try {
+          final currentUser =
+              getCurrentUser(); // Obtiene el usuario autenticado
+          if (currentUser == null) {
+            throw Exception('Usuario no autenticado.');
+          }
+
+          // Busca el usuario en la tabla 'usuarios' utilizando el 'auth_user_id'
+          final response = await supabase
+              .from('usuarios')
+              .select('id') // Selecciona solo el ID
+              .eq('auth_user_id', currentUser.id) // Coincide el auth_user_id
+              .single(); // Devuelve un solo resultado
+
+          return response['id'] as int; // Devuelve el ID del usuario
+        } catch (e) {
+          throw Exception(
+              'Error al obtener el usuario_id: ${ErrorHandler.handleError(e)}');
+        }
+      }
 
       return null; // Éxito
     } on SocketException {
@@ -77,6 +127,22 @@ class AuthService {
     }
   }
 
+  // Obtener el ID del usuario autenticado
+  Future<int> currentUserId() async {
+    final user = getCurrentUser();
+    if (user == null) {
+      throw Exception('Usuario no autenticado.');
+    }
+
+    // Obtener el ID desde la tabla public.usuarios
+    final userDetails = await getUserDetails();
+    if (userDetails == null || userDetails['id'] == null) {
+      throw Exception('No se encontró el ID del usuario en la base de datos.');
+    }
+
+    return userDetails['id'] as int; // Retorna el ID del usuario autenticado
+  }
+
   // Cerrar sesión
   Future<String?> logout() async {
     try {
@@ -94,11 +160,6 @@ class AuthService {
     } catch (e) {
       return ErrorHandler.handleError(e);
     }
-  }
-
-  // Obtener el usuario actual
-  User? getCurrentUser() {
-    return supabase.auth.currentUser;
   }
 
   // Obtener información adicional del usuario desde public.usuarios

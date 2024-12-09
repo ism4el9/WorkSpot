@@ -499,7 +499,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const PaymentMethodsScreen(),
+                        builder: (context) => PaymentMethodsScreen(),
                       ),
                     );
                   },

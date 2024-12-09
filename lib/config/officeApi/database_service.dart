@@ -176,20 +176,36 @@ class DatabaseService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchMetodosPagoByUser(int userId) async {
+    try {
+      final response = await supabase
+          .from('metodos_pago')
+          .select()
+          .eq('usuario_id', userId)
+          .timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw Exception(
+              'La solicitud de métodos de pago ha tardado demasiado.');
+        },
+      );
+      return List<Map<String, dynamic>>.from(response);
+    } on SocketException {
+      throw NetworkException('No hay conexión a internet.');
+    } catch (e) {
+      throw Exception(ErrorHandler.handleError(e));
+    }
+  }
+
   Future<void> addMetodoPago(Map<String, dynamic> metodoPago) async {
     try {
-      final response =
-          await supabase.from('metodos_pago').insert(metodoPago).timeout(
+      await supabase.from('metodos_pago').insert(metodoPago).timeout(
         requestTimeout,
         onTimeout: () {
           throw Exception(
               'La solicitud de añadir metodo_pago ha tardado demasiado. Por favor, inténtalo de nuevo.');
         },
       );
-      if (response == null) {
-        throw Exception(
-            'Error al agregar método de pago: No se recibió respuesta.');
-      }
     } on SocketException {
       throw NetworkException('No hay conexión a internet.');
     } catch (e) {
@@ -221,24 +237,23 @@ class DatabaseService {
     }
   }
 
-  Future<void> deleteMetodoPago(int id) async {
+  Future<void> deleteMetodoPago(int cardId) async {
     try {
-      final response =
-          await supabase.from('metodos_pago').delete().eq('id', id).timeout(
-        requestTimeout,
-        onTimeout: () {
-          throw Exception(
-              'La solicitud de eliminar metodo_pago ha tardado demasiado. Por favor, inténtalo de nuevo.');
-        },
-      );
-      if (response == null) {
-        throw Exception(
-            'Error al eliminar método de pago: No se recibió respuesta.');
+      // Realiza la operación de eliminación directamente
+      final response = await supabase
+          .from('metodos_pago') // Nombre de la tabla
+          .delete()
+          .eq('id', cardId) // Filtro para eliminar por ID
+          .select(); // Asegúrate de incluir select() para obtener una respuesta clara
+
+      // Verifica si la respuesta está vacía
+      if (response.isEmpty) {
+        throw Exception('No se encontró el método de pago para eliminar.');
       }
-    } on SocketException {
-      throw NetworkException('No hay conexión a internet.');
+
+      print('Tarjeta eliminada con éxito. Respuesta: $response');
     } catch (e) {
-      throw Exception(ErrorHandler.handleError(e));
+      throw Exception('Error al intentar eliminar el método de pago: $e');
     }
   }
 
