@@ -1,6 +1,5 @@
 import 'package:astro_office/config/officeApi/auth.dart';
 import 'package:astro_office/screens/home_page.dart';
-import 'package:astro_office/screens/office_details.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -35,35 +34,6 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
   TimeOfDay? endTime;
   int attendees = 0;
   final TextEditingController _sectorController = TextEditingController();
-
-  final List<Map<String, String>> nearbyOffices = [
-    {
-      "direccion": "Av. Amazonas y Naciones Unidas",
-      "edificio": "Edificio World Trade Center",
-      "personas": "Capacidad: 15 personas",
-      "tipo": "Privado",
-    },
-    {
-      "direccion": "Av. República y Shyris",
-      "edificio": "Edificio República Plaza",
-      "personas": "Capacidad: 10 personas",
-      "tipo": "Compartido",
-    },
-    {
-      "direccion": "Calle Eloy Alfaro y 6 de Diciembre",
-      "edificio": "Edificio Metropolitan",
-      "personas": "Capacidad: 8 personas",
-      "tipo": "Privado",
-    },
-  ];
-
-  List<Map<String, String>> get filteredOffices {
-    if (isPrivateSelected == null) {
-      return nearbyOffices;
-    }
-    String tipo = isPrivateSelected! ? "Privado" : "Compartido";
-    return nearbyOffices.where((office) => office["tipo"] == tipo).toList();
-  }
 
   void _resetFilters() {
     setState(() {
@@ -106,12 +76,7 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
               const SizedBox(height: 16),
               _buildNeumorphicTextField(),
               const SizedBox(height: 16),
-              const Text(
-                "Recomendaciones",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
               const SizedBox(height: 8),
-              _buildNeumorphicOfficeList(),
               const SizedBox(height: 16),
               const Text(
                 "Fecha de Reserva",
@@ -207,55 +172,13 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
       child: TextField(
         controller: _sectorController,
         decoration: const InputDecoration(
-          labelText: '¿En qué sector o edificio?',
+          labelText: '¿Edificio, Ubicación, Descripción?',
           prefixIcon: Icon(Icons.search),
           border: InputBorder.none,
           contentPadding:
               EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         ),
       ),
-    );
-  }
-
-  Widget _buildNeumorphicOfficeList() {
-    return ListView.builder(
-      shrinkWrap: true,
-      itemCount: filteredOffices.length,
-      itemBuilder: (context, index) {
-        final office = filteredOffices[index];
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          decoration: _neumorphicDecoration(false),
-          child: InkWell(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => OfficeDetailScreen(
-                    isUserLoggedIn:AuthService().isLoggedIn(),
-                    officeDetails: office, // Agrega servicios dinámicos si están disponibles
-                  ),
-                ),
-              );
-            },
-            child: ListTile(
-              title: Text(
-                office["edificio"]!,
-                style: TextStyle(color: Theme.of(context).colorScheme.primary),
-              ),
-              subtitle: Text(
-                "${office["direccion"]!}\n${office["personas"]!}",
-              ),
-              trailing: Text(
-                office["tipo"]!,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.tertiary,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 

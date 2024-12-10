@@ -22,8 +22,11 @@ class _FiltersPageState extends State<FiltersPage> {
   final List<String> _extras = [
     'Wifi',
     'Impresora',
-    'Estacionamiento',
+    'Café',
+    'Sala de reuniones',
     'Aire acondicionado',
+    'Seguridad 24/7',
+    'Estacionamiento'
   ];
 
   @override
