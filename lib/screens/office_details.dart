@@ -3,6 +3,7 @@ import 'package:astro_office/screens/pay.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 //API DE GOOGLE
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class OfficeDetailScreen extends StatefulWidget {
   const OfficeDetailScreen({
@@ -206,31 +207,42 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  height: 150,
+                  height: 200,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.location_on,
-                            size: 40,
-                            color: Theme.of(context).colorScheme.tertiary),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Ubicación: ${widget.officeDetails['ubicacion']}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ],
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(
+                        widget
+                            .officeDetails['latitud'], // Coordenada de latitud
+                        widget.officeDetails[
+                            'longitud'], // Coordenada de longitud
+                      ),
+                      zoom: 15, // Nivel de zoom
                     ),
+                    markers: {
+                      Marker(
+                        markerId: const MarkerId('office_location'),
+                        position: LatLng(
+                          widget.officeDetails['latitud'],
+                          widget.officeDetails['longitud'],
+                        ),
+                        infoWindow: InfoWindow(
+                          title: widget.officeDetails['nombre'],
+                          snippet: widget.officeDetails['ubicacion'],
+                        ),
+                      ),
+                    },
+                    onMapCreated: (GoogleMapController controller) {
+                      // Puedes guardar el controlador si deseas realizar acciones más adelante
+                    },
                   ),
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 16),
 
           // Detalles de reserva
