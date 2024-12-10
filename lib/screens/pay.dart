@@ -3,6 +3,7 @@ import 'package:astro_office/config/officeApi/database_service.dart';
 import 'package:astro_office/screens/home_page.dart';
 import 'package:astro_office/screens/office_details.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_card_screen.dart'; // Pantalla para añadir tarjetas
 import 'payment_card.dart'; // Modelo de tarjeta de pago
@@ -27,6 +28,116 @@ class _PaymentPageState extends State<PaymentPage> {
   void initState() {
     super.initState();
     _loadPaymentMethods(); // Carga métodos al iniciar
+  }
+
+  String removeDiacritics(String input) {
+    const withDiacritics = 'áéíóúüñÁÉÍÓÚÜÑ';
+    const withoutDiacritics = 'aeiouunAEIOUUN';
+
+    return input.split('').map((char) {
+      final index = withDiacritics.indexOf(char);
+      return index != -1 ? withoutDiacritics[index] : char;
+    }).join('');
+  }
+
+  int _toMinutes(TimeOfDay time) {
+    return time.hour * 60 + time.minute;
+  }
+
+  Map<String, dynamic> _updateDisponibilidad(
+    Map<String, dynamic> disponibilidad,
+    DateTime fechaReserva,
+    TimeOfDay horaEntrada,
+    TimeOfDay horaSalida,
+  ) {
+    final dayOfWeek = removeDiacritics(
+        DateFormat('EEEE', 'es_ES').format(fechaReserva).toLowerCase());
+
+    if (!disponibilidad.containsKey(dayOfWeek)) {
+      throw Exception('No hay disponibilidad para el día seleccionado.');
+    }
+
+    final horarios = disponibilidad[dayOfWeek] as List<dynamic>;
+
+    final entrada = _toMinutes(horaEntrada);
+    final salida = _toMinutes(horaSalida);
+
+    final nuevosHorarios = <Map<String, dynamic>>[];
+
+    for (var horario in horarios) {
+      final inicio = _toMinutes(TimeOfDay(
+        hour: int.parse(horario['inicio'].split(':')[0]),
+        minute: int.parse(horario['inicio'].split(':')[1]),
+      ));
+      final fin = _toMinutes(TimeOfDay(
+        hour: int.parse(horario['fin'].split(':')[0]),
+        minute: int.parse(horario['fin'].split(':')[1]),
+      ));
+
+      if (inicio == entrada && fin == salida) {
+        // Si el horario coincide exactamente con la reserva, agregar como ocupado
+        nuevosHorarios.add({
+          'inicio': horario['inicio'],
+          'fin': horario['fin'],
+          'estado': 'ocupado',
+        });
+      } else if (entrada > inicio && salida < fin) {
+        // Dividir el horario en dos bloques disponibles y uno ocupado
+        nuevosHorarios.add({
+          'inicio': horario['inicio'],
+          'fin':
+              '${horaEntrada.hour}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+          'estado': 'disponible',
+        });
+        nuevosHorarios.add({
+          'inicio':
+              '${horaEntrada.hour}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+          'fin':
+              '${horaSalida.hour}:${horaSalida.minute.toString().padLeft(2, '0')}',
+          'estado': 'ocupado',
+        });
+        nuevosHorarios.add({
+          'inicio':
+              '${horaSalida.hour}:${horaSalida.minute.toString().padLeft(2, '0')}',
+          'fin': horario['fin'],
+          'estado': 'disponible',
+        });
+      } else if (entrada > inicio && entrada < fin) {
+        // Actualizar el bloque desde la hora de entrada
+        nuevosHorarios.add({
+          'inicio': horario['inicio'],
+          'fin':
+              '${horaEntrada.hour}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+          'estado': 'disponible',
+        });
+        nuevosHorarios.add({
+          'inicio':
+              '${horaEntrada.hour}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+          'fin': horario['fin'],
+          'estado': 'ocupado',
+        });
+      } else if (salida > inicio && salida < fin) {
+        // Actualizar el bloque hasta la hora de salida
+        nuevosHorarios.add({
+          'inicio': horario['inicio'],
+          'fin':
+              '${horaSalida.hour}:${horaSalida.minute.toString().padLeft(2, '0')}',
+          'estado': 'ocupado',
+        });
+        nuevosHorarios.add({
+          'inicio':
+              '${horaSalida.hour}:${horaSalida.minute.toString().padLeft(2, '0')}',
+          'fin': horario['fin'],
+          'estado': 'disponible',
+        });
+      } else {
+        // Mantener horarios que no se traslapan con la reserva
+        nuevosHorarios.add(horario);
+      }
+    }
+
+    disponibilidad[dayOfWeek] = nuevosHorarios;
+    return disponibilidad;
   }
 
   Future<bool> createReservation(Reservation reservation) async {
@@ -58,6 +169,19 @@ class _PaymentPageState extends State<PaymentPage> {
         'puestos': reservation.cantidadAsistentes,
       }).select();
       final reservaId = reservaResponse[0]['id'];
+
+      // Actualizar la disponibilidad de la oficina
+      final updatedDisponibilidad = _updateDisponibilidad(
+        reservation.disponibilidad,
+        reservation.fechaReserva,
+        reservation.horaEntrada,
+        reservation.horaSalida,
+      );
+
+      await Supabase.instance.client
+          .from('oficinas')
+          .update({'disponibilidad': updatedDisponibilidad}).eq(
+              'id', reservation.oficinaId);
 
       // Insertar el pago en la tabla `pagos`
       await Supabase.instance.client.from('pagos').insert({

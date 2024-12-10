@@ -2,15 +2,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ReservationDetailScreen extends StatefulWidget {
   final VoidCallback? onCancelled;
-   const ReservationDetailScreen({
-    super.key,
-    required this.reserveDetails,
-    this.onCancelled
-  });
+  const ReservationDetailScreen(
+      {super.key, required this.reserveDetails, this.onCancelled});
 
   static const Map<String, IconData> iconMap = {
     'print': Icons.print,
@@ -25,7 +23,8 @@ class ReservationDetailScreen extends StatefulWidget {
   final Map<String, dynamic> reserveDetails;
 
   @override
-  State<ReservationDetailScreen> createState() => _ReservationDetailScreenState();
+  State<ReservationDetailScreen> createState() =>
+      _ReservationDetailScreenState();
 }
 
 class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
@@ -40,46 +39,154 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     setState(() {
       isCancelling = true; // Restablecer el estado
     });
-  try {
-    final reservaId = widget.reserveDetails['id'];
+    try {
+      final reservaId = widget.reserveDetails['id'];
 
-    // Obtener la hora de inicio de la reserva
-    final fechaReserva = DateTime.parse(widget.reserveDetails['fecha_reserva']);
-    final horaInicio = widget.reserveDetails['hora_inicio'];
-    final inicioReserva = DateTime(
-      fechaReserva.year,
-      fechaReserva.month,
-      fechaReserva.day,
-      int.parse(horaInicio.split(':')[0]), // Hora
-      int.parse(horaInicio.split(':')[1]), // Minutos
-    );
+      // Obtener la hora de inicio de la reserva
+      final fechaReserva =
+          DateTime.parse(widget.reserveDetails['fecha_reserva']);
+      final horaInicio = widget.reserveDetails['hora_inicio'];
+      final horaFin = widget.reserveDetails['hora_fin'];
+      final inicioReserva = DateTime(
+        fechaReserva.year,
+        fechaReserva.month,
+        fechaReserva.day,
+        int.parse(horaInicio.split(':')[0]), // Hora
+        int.parse(horaInicio.split(':')[1]), // Minutos
+      );
 
-    // Verificar si la hora actual está al menos 3 horas antes de la hora de inicio
-    final now = DateTime.now();
-    if (now.isAfter(inicioReserva.subtract(const Duration(hours: 3)))) {
+
+      // Verificar si la hora actual está al menos 3 horas antes de la hora de inicio
+      final now = DateTime.now();
+      if (now.isAfter(inicioReserva.subtract(const Duration(hours: 3)))) {
+        cancelSucces = false;
+        cancelSuccesMessage =
+            'La reserva solo puede cancelarse hasta 3 horas antes del inicio.';
+        return;
+      }
+
+      // Actualizar el estado de la reserva a 'cancelado'
+      await Supabase.instance.client
+          .from('reservas')
+          .update({'estado': 'cancelado'}).eq('id', reservaId);
+      // Obtener la oficina asociada a la reserva
+      final oficinaResponse = await Supabase.instance.client
+          .from('oficinas')
+          .select('id, disponibilidad')
+          .eq('id', widget.reserveDetails['oficina_id'])
+          .single();
+
+      final disponibilidad =
+          oficinaResponse['disponibilidad'] as Map<String, dynamic>;
+
+      // Actualizar la disponibilidad de la oficina
+      final updatedDisponibilidad = _restoreDisponibilidad(
+        disponibilidad,
+        fechaReserva,
+        TimeOfDay(
+          hour: int.parse(horaInicio.split(':')[0]),
+          minute: int.parse(horaInicio.split(':')[1]),
+        ),
+        TimeOfDay(
+          hour: int.parse(horaFin.split(':')[0]),
+          minute: int.parse(horaFin.split(':')[1]),
+        ),
+      );
+
+      // Guardar la disponibilidad actualizada en la base de datos
+      await Supabase.instance.client.from('oficinas').update({
+        'disponibilidad': updatedDisponibilidad,
+      }).eq('id', widget.reserveDetails['oficina_id']);
+
+      // Notificar la cancelación exitosa
+      if (widget.onCancelled != null) {
+        widget.onCancelled!();
+      }
+      cancelSucces = true;
+    } catch (e) {
       cancelSucces = false;
-      cancelSuccesMessage = 'La reserva solo puede cancelarse hasta 3 horas antes del inicio.';
-      return;
+      cancelSuccesMessage = 'Error al cancelar la reserva: $e';
+    } finally {
+      setState(() {
+        isCancelling = false; // Restablecer el estado
+      });
     }
-
-    // Actualizar el estado de la reserva a 'cancelado'
-    await Supabase.instance.client
-        .from('reservas')
-        .update({'estado': 'cancelado'})
-        .eq('id', reservaId)
-        ;
-    if (widget.onCancelled != null) {
-          widget.onCancelled!();
-        }
-  } catch (e) {
-    cancelSucces = false;
-    cancelSuccesMessage = 'Error al cancelar la reserva: $e';
-  } finally {
-    setState(() {
-      isCancelling = false; // Restablecer el estado
-    });
   }
+  String removeDiacritics(String input) {
+    const withDiacritics = 'áéíóúüñÁÉÍÓÚÜÑ';
+    const withoutDiacritics = 'aeiouunAEIOUUN';
+
+    return input.split('').map((char) {
+      final index = withDiacritics.indexOf(char);
+      return index != -1 ? withoutDiacritics[index] : char;
+    }).join('');
+  }
+
+  Map<String, dynamic> _restoreDisponibilidad(
+  Map<String, dynamic> disponibilidad,
+  DateTime fechaReserva,
+  TimeOfDay horaEntrada,
+  TimeOfDay horaSalida,
+) {
+  int _toMinutes(TimeOfDay time) => time.hour * 60 + time.minute;
+
+  final dayOfWeek = removeDiacritics(DateFormat('EEEE', 'es_ES').format(fechaReserva).toLowerCase());
+
+  if (!disponibilidad.containsKey(dayOfWeek)) {
+    throw Exception('No hay disponibilidad para el día seleccionado.');
+  }
+
+  final horarios = disponibilidad[dayOfWeek] as List<dynamic>;
+
+  final entrada = _toMinutes(horaEntrada);
+  final salida = _toMinutes(horaSalida);
+
+  final nuevosHorarios = <Map<String, dynamic>>[];
+
+  for (var horario in horarios) {
+    final inicio = _toMinutes(TimeOfDay(
+      hour: int.parse(horario['inicio'].split(':')[0]),
+      minute: int.parse(horario['inicio'].split(':')[1]),
+    ));
+    final fin = _toMinutes(TimeOfDay(
+      hour: int.parse(horario['fin'].split(':')[0]),
+      minute: int.parse(horario['fin'].split(':')[1]),
+    ));
+
+    if (inicio == entrada && fin == salida && horario['estado'] == 'ocupado') {
+      // Restaurar todo el bloque como disponible
+      nuevosHorarios.add({
+        'inicio': horario['inicio'],
+        'fin': horario['fin'],
+        'estado': 'disponible',
+      });
+    } else if (inicio < entrada && fin > salida && horario['estado'] == 'ocupado') {
+      // Dividir el bloque en tres partes
+      nuevosHorarios.add({
+        'inicio': horario['inicio'],
+        'fin': '${horaEntrada.hour}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+        'estado': 'ocupado',
+      });
+      nuevosHorarios.add({
+        'inicio': '${horaEntrada.hour}:${horaEntrada.minute.toString().padLeft(2, '0')}',
+        'fin': '${horaSalida.hour}:${horaSalida.minute.toString().padLeft(2, '0')}',
+        'estado': 'disponible',
+      });
+      nuevosHorarios.add({
+        'inicio': '${horaSalida.hour}:${horaSalida.minute.toString().padLeft(2, '0')}',
+        'fin': horario['fin'],
+        'estado': 'ocupado',
+      });
+    } else {
+      // Mantener los bloques no relacionados
+      nuevosHorarios.add(horario);
+    }
+  }
+
+  disponibilidad[dayOfWeek] = nuevosHorarios;
+  return disponibilidad;
 }
+
 
   @override
   Widget build(BuildContext context) {
@@ -176,9 +283,10 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                     Text(
                       '${widget.reserveDetails['oficina_tipo']}',
                       style: TextStyle(
-                        color: widget.reserveDetails['oficina_tipo'] == 'Privado'
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.tertiary,
+                        color:
+                            widget.reserveDetails['oficina_tipo'] == 'Privado'
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.tertiary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -220,7 +328,8 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                       return Row(
                         children: [
                           Icon(
-                            ReservationDetailScreen.iconMap[service['extras']['icono']] ??
+                            ReservationDetailScreen
+                                    .iconMap[service['extras']['icono']] ??
                                 Icons.extension,
                             color: Theme.of(context).colorScheme.tertiary,
                           ),
@@ -284,7 +393,8 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                             ),
                             infoWindow: InfoWindow(
                               title: widget.reserveDetails['oficina_nombre'],
-                              snippet: widget.reserveDetails['oficina_ubicacion'],
+                              snippet:
+                                  widget.reserveDetails['oficina_ubicacion'],
                             ),
                           ),
                         },
@@ -473,10 +583,9 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                       ),
                       actions: [
                         ElevatedButton(
-                          onPressed: () async{
-                            Navigator.pop(
-                                context);
-                                 // Cierra el diálogo sin cancelar
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            // Cierra el diálogo sin cancelar
                           },
                           style: const ButtonStyle(
                               elevation: WidgetStatePropertyAll(5)),
@@ -484,19 +593,20 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            
-                            Navigator.pop(
-                                context);
-                                 // Cierra el diálogo de confirmación
+                            Navigator.pop(context);
+                            // Cierra el diálogo de confirmación
                             showDialog(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: Text(cancelSucces?
-                                  "Reserva Cancelada con Éxito"
-                                  :'No se pudo cancelar la reserva',
+                                title: Text(
+                                  cancelSucces
+                                      ? "Reserva Cancelada con Éxito"
+                                      : 'No se pudo cancelar la reserva',
                                   style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
+                                    color:cancelSucces
+                                      ?
+                                        Theme.of(context).colorScheme.primary
+                                        :const Color.fromARGB(255, 170, 159, 10),
                                     fontWeight: FontWeight.bold,
                                   ),
                                   textAlign: TextAlign.center,
@@ -504,19 +614,19 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                     Text(cancelSucces?
-                                      "Lamentamos cualquier molestia"
-                                      :cancelSuccesMessage,
+                                    Text(
+                                      cancelSucces
+                                          ? "Lamentamos cualquier inconveniente"
+                                          : cancelSuccesMessage,
                                       textAlign: TextAlign.center,
                                     ),
                                     const SizedBox(height: 20),
                                     ElevatedButton(
                                       onPressed: () async {
-                                        Navigator.pop(
-                                            context);
-                                            await cancelReservation(
+                                        Navigator.pop(context);
+                                        await cancelReservation(
                                             context); // Cierra el pop-up
-                                         // Regresa a la pantalla anterior
+                                        // Regresa a la pantalla anterior
                                       },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Theme.of(context)

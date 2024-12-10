@@ -321,7 +321,8 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
       cantidadAsistentes: numAttendees,
       nombreReserva: nameController.text.trim(),
       total: total.toDouble(),
-      oficinaId: widget.officeDetails['id'],
+      oficinaId: widget.officeDetails['id'], 
+      disponibilidad: widget.officeDetails['disponibilidad'] as Map<String, dynamic>, 
     );
 
     // Si todo está disponible, proceder con la reserva
@@ -836,6 +837,7 @@ class Reservation {
   final String nombreReserva;
   final double total;
   final int oficinaId;
+  final Map<String, dynamic> disponibilidad; // Disponibilidad de la oficina
 
   Reservation({
     required this.fechaReserva,
@@ -845,5 +847,7 @@ class Reservation {
     required this.nombreReserva,
     required this.total,
     required this.oficinaId,
+    required this.disponibilidad,
   });
 }
+
