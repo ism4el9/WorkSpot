@@ -126,10 +126,7 @@ class _OfficeCardMiniState extends State<OfficeCardMini> {
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 5),
-                  Text(
-                    widget.officeData['tipo'] == 'Privado'
-                        ? '${widget.officeData['capacidad']} personas max.'
-                        : '${widget.officeData['capacidad']} puestos.',
+                  Text('${widget.officeData['capacidad']} personas max.',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

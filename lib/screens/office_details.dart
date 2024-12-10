@@ -1,27 +1,23 @@
+import 'package:astro_office/config/officeApi/error_handler.dart';
 import 'package:astro_office/screens/login_page.dart';
 import 'package:astro_office/screens/pay.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 //API DE GOOGLE
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OfficeDetailScreen extends StatefulWidget {
   const OfficeDetailScreen({
     super.key,
     required this.officeDetails,
-    this.services = const [
-      {'label': 'Wi-Fi', 'icon': Icons.wifi},
-      {'label': 'Impresora', 'icon': Icons.print},
-      {'label': 'Café', 'icon': Icons.coffee},
-      {'label': 'Sala de Reuniones', 'icon': Icons.meeting_room},
-      {'label': 'Aire Acondicionado', 'icon': Icons.ac_unit},
-      {'label': 'Seguridad 24/7', 'icon': Icons.security},
-    ],
     required this.isUserLoggedIn,
+    this.onFavoriteChanged
   });
 
+  final VoidCallback? onFavoriteChanged;
   final Map<String, dynamic> officeDetails;
-  final List<Map<String, dynamic>> services;
   final bool isUserLoggedIn;
 
   @override
@@ -29,12 +25,121 @@ class OfficeDetailScreen extends StatefulWidget {
 }
 
 class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
+  final Map<String, IconData> iconMap = {
+    'print': Icons.print,
+    'local_cafe': Icons.work,
+    'wifi': Icons.wifi,
+    'meeting_room': Icons.meeting_room,
+    'ac_unit': Icons.ac_unit,
+    'security': Icons.security,
+    'local_parking': Icons.local_parking,
+    // Añade más iconos según sea necesario
+  };
   bool isFavorite = false;
+  bool isLoading = false;
 
-  void toggleFavorite() {
+  Future<void> checkIfFavorite() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception('Usuario no autenticado.');
+    }
+
+    try {
+      // Obtener usuario_id desde la tabla usuarios
+      final usuarioResponse = await Supabase.instance.client
+          .from('usuarios')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+
+      // Verificar si la oficina está en favoritos
+      final favoriteResponse = await Supabase.instance.client
+          .from('favoritos')
+          .select('usuario_id') // Solo necesitamos saber si existe un registro
+          .eq('usuario_id', usuarioResponse['id'])
+          .eq('oficina_id', widget.officeDetails['id'])
+          .maybeSingle();
+
+      if (favoriteResponse != null) {
+        setState(() {
+          isFavorite = true;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ErrorHandler.handleError(e))),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isUserLoggedIn) {
+      checkIfFavorite();
+    } // Comprobar si la oficina está en favoritos
+  }
+
+  Future<void> toggleFavorite() async {
+    if (widget.isUserLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Inicia Sesión para guardar un Favorito!!')),
+        );
+    }
+    if (isLoading) return; // Evitar múltiples clics
     setState(() {
-      isFavorite = !isFavorite;
+      isLoading = true;
     });
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw Exception('Usuario no autenticado.');
+      }
+
+      final usuarioResponse = await Supabase.instance.client
+          .from('usuarios')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+
+      if (isFavorite) {
+        // Eliminar de favoritos
+        await Supabase.instance.client.from('favoritos').delete().match({
+          'usuario_id': usuarioResponse[
+              'id'], // Obtén el usuario_id desde la tabla usuarios
+          'oficina_id': widget.officeDetails['id'],
+        });
+        if (widget.onFavoriteChanged != null) {
+          widget.onFavoriteChanged!();
+        }
+      } else {
+        // Agregar a favoritos
+        await Supabase.instance.client.from('favoritos').insert({
+          'usuario_id': usuarioResponse[
+              'id'], // Obtén el usuario_id desde la tabla usuarios
+          'oficina_id': widget.officeDetails['id'],
+        });
+        if (widget.onFavoriteChanged != null) {
+          widget.onFavoriteChanged!();
+        }
+      }
+
+      setState(() {
+        isFavorite = !isFavorite; // Alternar estado de favorito
+      });
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorHandler.handleError(e))),
+        );
+      }
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   DateTime selectedDate = DateTime.now();
@@ -111,15 +216,23 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
             decoration: _neumorphicDecoration(context),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.asset(
-                'assets/default_office.jpg',
-                width: double.infinity,
-                height: 250,
-                fit: BoxFit.cover,
-              ),
+              child: CachedNetworkImage(
+                  imageUrl: widget.officeDetails['oficinas_imagenes'][0]['url'],
+                  width: double.infinity,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => const Center(
+                    child:
+                        CircularProgressIndicator(), // Indicador mientras se carga
+                  ),
+                  errorWidget: (context, url, error) => const Center(
+                    child: Icon(Icons.error,
+                        color: Colors.red), // Ícono cuando falla la carga
+                  ),
+                ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 32),
 
           // Detalles principales
           _buildNeumorphicContainer(
@@ -140,7 +253,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 2),
 
           // Descripción
           _buildNeumorphicContainer(
@@ -151,13 +264,13 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 2),
 
           // Precio
           _buildNeumorphicContainer(
             context,
             child: Text(
-              "Precio: \$${widget.officeDetails['precio_por_hora']}/h",
+              "Precio: \$${widget.officeDetails['precio_por_hora'].toStringAsFixed(2)}/h",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -165,7 +278,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 2),
 
           // Servicios
           _buildNeumorphicContainer(
@@ -178,22 +291,22 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                ...widget.services.map((service) {
+                ...widget.officeDetails['oficinas_extras'].map((service) {
                   return Row(
                     children: [
                       Icon(
-                        service['icon'],
+                        iconMap[service['extras']['icono']] ?? Icons.extension,
                         color: Theme.of(context).colorScheme.tertiary,
                       ),
                       const SizedBox(width: 8),
-                      Text(service['label']),
+                      Text(service['extras']['nombre']),
                     ],
                   );
                 }),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 2),
 
           // Ubicación
           _buildNeumorphicContainer(
@@ -207,7 +320,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  height: 200,
+                  height: 300,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -243,7 +356,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 2),
 
           // Detalles de reserva
           _buildNeumorphicContainer(
