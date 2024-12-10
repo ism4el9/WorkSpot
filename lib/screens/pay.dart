@@ -54,7 +54,7 @@ class _PaymentPageState extends State<PaymentPage> {
             '${reservation.horaEntrada.hour}:${reservation.horaEntrada.minute}',
         'hora_fin':
             '${reservation.horaSalida.hour}:${reservation.horaSalida.minute}',
-        'estado': 'pagado',
+        'estado': 'pendiente',
         'puestos': reservation.cantidadAsistentes,
       }).select();
       final reservaId = reservaResponse[0]['id'];

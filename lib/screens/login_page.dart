@@ -133,8 +133,8 @@ class LoginPage extends StatelessWidget {
                       );
                       return;
                     }
-
-                    if (!reservation) {
+                    
+                    if (! (reservation != null)) {
                       final error = await AuthService().login(email, password);
 
                       if (error != null) {
@@ -229,7 +229,7 @@ class LoginPage extends StatelessWidget {
             Center(
               child: GestureDetector(
                 onTap: () async {
-                  if (reservation) {
+                  if (reservation != null) {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) =>
