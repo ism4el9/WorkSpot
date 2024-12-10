@@ -51,14 +51,22 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   // Agregar una nueva tarjeta
 
   // Eliminar una tarjeta
+  bool isDeleting = false; // Bandera para controlar el estado de eliminación
+
   Future<void> _deleteCard(int cardId) async {
+    if (isDeleting) return; // Evitar múltiples clics mientras se ejecuta la acción
+
+    setState(() {
+      isDeleting = true; // Marcar como en proceso
+    });
+
     try {
       // Llamada al servicio para eliminar la tarjeta
       await _databaseService.deleteMetodoPago(cardId);
 
       // Recargar tarjetas después de eliminar
       await _loadCards();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tarjeta eliminada con éxito.')),
       );
@@ -66,6 +74,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al eliminar tarjeta: $error')),
       );
+    } finally {
+      setState(() {
+        isDeleting = false; // Restablecer el estado
+      });
     }
   }
 

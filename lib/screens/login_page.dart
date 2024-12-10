@@ -5,8 +5,8 @@ import 'package:astro_office/screens/register_page.dart';
 import 'package:flutter/material.dart';
 
 class LoginPage extends StatelessWidget {
-  final bool payment;
-  LoginPage({super.key, required this.payment});
+  final reservation;
+  LoginPage({super.key, this.reservation});
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -134,7 +134,7 @@ class LoginPage extends StatelessWidget {
                       return;
                     }
 
-                    if (!payment) {
+                    if (!reservation) {
                       final error = await AuthService().login(email, password);
 
                       if (error != null) {
@@ -173,7 +173,7 @@ class LoginPage extends StatelessWidget {
                       final result = await Navigator.of(context).push(
                         MaterialPageRoute(
                             builder: (context) =>
-                                const PaymentPage(totalPrice: 86)),
+                                PaymentPage(reservation: reservation)),
                       );
                       final error = await AuthService().login(email, password);
 
@@ -229,11 +229,21 @@ class LoginPage extends StatelessWidget {
             Center(
               child: GestureDetector(
                 onTap: () async {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => RegisterPage(payment: payment),
-                    ),
-                  );
+                  if (reservation) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            RegisterPage(reservation: reservation),
+                      ),
+                    );
+                  } else {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            RegisterPage(),
+                      ),
+                    );
+                  }
                 },
                 child: const Text(
                   '¿No tienes cuenta? Regístrate',

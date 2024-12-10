@@ -3,8 +3,8 @@ import 'package:astro_office/screens/pay.dart';
 import 'package:flutter/material.dart';
 
 class RegisterPage extends StatelessWidget {
-  final bool payment;
-  RegisterPage({super.key, required this.payment});
+  final reservation;
+  RegisterPage({super.key, this.reservation});
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -182,7 +182,7 @@ class RegisterPage extends StatelessWidget {
                         );
                       }
 
-                      if (!payment) {
+                      if (!reservation) {
                         if (context.mounted) Navigator.of(context).pop();
                       } else {
                         var result = false;
@@ -190,7 +190,7 @@ class RegisterPage extends StatelessWidget {
                           result = await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const PaymentPage(totalPrice: 86),
+                                  PaymentPage(reservation: reservation),
                             ),
                           );
                         }

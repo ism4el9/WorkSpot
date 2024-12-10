@@ -1,7 +1,6 @@
 import 'package:astro_office/config/officeApi/error_handler.dart';
 import 'package:astro_office/screens/office_details.dart';
 import 'package:astro_office/widgets/mini_office_card.dart';
-import 'package:astro_office/widgets/search_bar_without_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -108,10 +107,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       ),
       body: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 10, left: 10, right: 10),
-            child: SearchBarWithoutIcons(),
-          ),
+          
           widget.isUserLoggedIn
               ? isLoading
                   ? const Expanded(

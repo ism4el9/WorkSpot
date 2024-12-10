@@ -6,15 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 //API DE GOOGLE
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OfficeDetailScreen extends StatefulWidget {
-  const OfficeDetailScreen({
-    super.key,
-    required this.officeDetails,
-    required this.isUserLoggedIn,
-    this.onFavoriteChanged
-  });
+  const OfficeDetailScreen(
+      {super.key,
+      required this.officeDetails,
+      required this.isUserLoggedIn,
+      this.onFavoriteChanged});
 
   final VoidCallback? onFavoriteChanged;
   final Map<String, dynamic> officeDetails;
@@ -84,8 +84,9 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
   Future<void> toggleFavorite() async {
     if (widget.isUserLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Inicia Sesión para guardar un Favorito!!')),
-        );
+        const SnackBar(
+            content: Text('Inicia Sesión para guardar un Favorito!!')),
+      );
     }
     if (isLoading) return; // Evitar múltiples clics
     setState(() {
@@ -142,6 +143,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
     }
   }
 
+  int numAttendees = 1;
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedEntryTime = const TimeOfDay(hour: 11, minute: 0);
   TimeOfDay selectedExitTime = const TimeOfDay(hour: 12, minute: 0);
@@ -185,6 +187,134 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
     }
   }
 
+  Future<void> _validateAndReserve(num total) async {
+    // Verificar que la fecha no sea menor al día actual
+    if (selectedDate
+        .isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'La fecha seleccionada no puede ser anterior al día de hoy.')),
+      );
+      return;
+    }
+
+    // Verificar que la hora de entrada sea menor que la hora de salida
+    final selectedStart =
+        selectedEntryTime.hour + selectedEntryTime.minute / 60;
+    final selectedEnd = selectedExitTime.hour + selectedExitTime.minute / 60;
+
+    if (selectedStart >= selectedEnd) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'La hora de entrada debe ser menor que la hora de salida.')),
+      );
+      return;
+    }
+
+    String removeDiacritics(String input) {
+      const withDiacritics = 'áéíóúüñÁÉÍÓÚÜÑ';
+      const withoutDiacritics = 'aeiouunAEIOUUN';
+
+      return input.split('').map((char) {
+        final index = withDiacritics.indexOf(char);
+        return index != -1 ? withoutDiacritics[index] : char;
+      }).join('');
+    }
+
+    final selectedDay = removeDiacritics(
+      DateFormat('EEEE', 'es_ES').format(selectedDate).toLowerCase(),
+    );
+    print('selectedDay: $selectedDay');
+    final disponibilidad =
+        widget.officeDetails['disponibilidad'] as Map<String, dynamic>;
+
+    // Verificar si el día tiene horarios disponibles
+    if (!disponibilidad.containsKey(selectedDay)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('La oficina no está disponible el día seleccionado.')),
+      );
+      return;
+    }
+
+    // Verificar los horarios disponibles
+    final horarios = disponibilidad[selectedDay] as List<dynamic>;
+    bool isTimeAvailable = horarios.any((horario) {
+      final start = TimeOfDay(
+            hour: int.parse(horario['inicio'].split(':')[0]),
+            minute: int.parse(horario['inicio'].split(':')[1]),
+          ).hour +
+          TimeOfDay(
+                hour: int.parse(horario['inicio'].split(':')[0]),
+                minute: int.parse(horario['inicio'].split(':')[1]),
+              ).minute /
+              60;
+
+      final end = TimeOfDay(
+            hour: int.parse(horario['fin'].split(':')[0]),
+            minute: int.parse(horario['fin'].split(':')[1]),
+          ).hour +
+          TimeOfDay(
+                hour: int.parse(horario['fin'].split(':')[0]),
+                minute: int.parse(horario['fin'].split(':')[1]),
+              ).minute /
+              60;
+
+      return horario['estado'] == 'disponible' &&
+          start <= selectedStart &&
+          end >= selectedEnd;
+    });
+
+    if (!isTimeAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('El horario seleccionado no está disponible.')),
+      );
+      return;
+    }
+
+    // Verificar la cantidad de asistentes
+    if (numAttendees > widget.officeDetails['capacidad']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'La cantidad de asistentes excede la capacidad disponible.')),
+      );
+      return;
+    }
+
+    if (nameController.text == '') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'Por favor ingrese a nombre de quién sera hecha la reserva')),
+      );
+      return;
+    }
+
+    final reservation = Reservation(
+      fechaReserva: selectedDate,
+      horaEntrada: selectedEntryTime,
+      horaSalida: selectedExitTime,
+      cantidadAsistentes: numAttendees,
+      nombreReserva: nameController.text.trim(),
+      total: total.toDouble(),
+      oficinaId: widget.officeDetails['id'],
+    );
+
+    // Si todo está disponible, proceder con la reserva
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => widget.isUserLoggedIn
+            ? PaymentPage(reservation: reservation)
+            : LoginPage(reservation: reservation),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Calculamos el total según las horas seleccionadas
@@ -217,19 +347,19 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
               child: CachedNetworkImage(
-                  imageUrl: widget.officeDetails['oficinas_imagenes'][0]['url'],
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => const Center(
-                    child:
-                        CircularProgressIndicator(), // Indicador mientras se carga
-                  ),
-                  errorWidget: (context, url, error) => const Center(
-                    child: Icon(Icons.error,
-                        color: Colors.red), // Ícono cuando falla la carga
-                  ),
+                imageUrl: widget.officeDetails['oficinas_imagenes'][0]['url'],
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const Center(
+                  child:
+                      CircularProgressIndicator(), // Indicador mientras se carga
                 ),
+                errorWidget: (context, url, error) => const Center(
+                  child: Icon(Icons.error,
+                      color: Colors.red), // Ícono cuando falla la carga
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -250,6 +380,18 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(widget.officeDetails['ubicacion']),
+                const SizedBox(height: 16),
+                Text(
+                  '${widget.officeDetails['tipo']}',
+                  style: TextStyle(
+                    color: widget.officeDetails['tipo'] == 'Privado'
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.tertiary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text('${widget.officeDetails['capacidad']} personas max.'),
               ],
             ),
           ),
@@ -357,6 +499,80 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
           ),
 
           const SizedBox(height: 2),
+          _buildNeumorphicContainer(
+            context,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Disponibilidad',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...widget.officeDetails['disponibilidad'].entries.map((entry) {
+                  final day = entry.key; // Día de la semana
+                  final horarios = entry.value as List<dynamic>;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _capitalize(
+                            day), // Capitalizar el día (e.g., "lunes" → "Lunes")
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      ...horarios.map((horario) {
+                        final inicio = horario['inicio'];
+                        final fin = horario['fin'];
+                        final estado = horario['estado'];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 16, bottom: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                estado == 'disponible'
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                color: estado == 'disponible'
+                                    ? Colors.green
+                                    : Colors.red,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '$inicio - $fin',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                estado,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: estado == 'disponible'
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                    ],
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 2),
 
           // Detalles de reserva
           _buildNeumorphicContainer(
@@ -396,6 +612,83 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                   ),
                   onTap: () => _selectExitTime(context),
                 ),
+                const SizedBox(height: 4),
+                ListTile(
+                  title: const Text("Cantidad de asistentes"),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            if (numAttendees > 0) numAttendees--; // Disminuir
+                          });
+                        },
+                        icon: const Icon(Icons.remove_circle),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      GestureDetector(
+                        onTap: () async {
+                          // Abre un diálogo para ingresar el número de asistentes
+                          final input = await showDialog<int>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              final TextEditingController inputController =
+                                  TextEditingController(text: "$numAttendees");
+                              return AlertDialog(
+                                title: const Text(
+                                    "Ingresar cantidad de asistentes"),
+                                content: TextField(
+                                  controller: inputController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    hintText: "Escribe el número de asistentes",
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    child: const Text("Cancelar"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      final value = int.tryParse(
+                                          inputController.text.trim());
+                                      Navigator.of(context).pop(value);
+                                    },
+                                    child: const Text("Aceptar"),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          // Si el usuario ingresó un número válido, actualiza la cantidad
+                          if (input != null && input >= 0) {
+                            setState(() {
+                              numAttendees = input;
+                            });
+                          }
+                        },
+                        child: Text(
+                          "$numAttendees",
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            numAttendees++; // Aumentar
+                          });
+                        },
+                        icon: const Icon(Icons.add_circle),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: nameController,
@@ -434,21 +727,7 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      final result = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => widget.isUserLoggedIn
-                              ? PaymentPage(
-                                  totalPrice: totalPrice
-                                      .toDouble()) // Conversión a double
-                              : LoginPage(payment: true),
-                        ),
-                      );
-
-                      if (result == true) {
-                        if (context.mounted) {
-                          Navigator.of(context).pop(true);
-                        }
-                      }
+                      _validateAndReserve(totalPrice);
                     },
                     style: ButtonStyle(
                       backgroundColor: WidgetStateProperty.all(
@@ -524,4 +803,27 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
       ],
     );
   }
+}
+
+String _capitalize(String text) =>
+    text[0].toUpperCase() + text.substring(1).toLowerCase();
+
+class Reservation {
+  final DateTime fechaReserva;
+  final TimeOfDay horaEntrada;
+  final TimeOfDay horaSalida;
+  final int cantidadAsistentes;
+  final String nombreReserva;
+  final double total;
+  final int oficinaId;
+
+  Reservation({
+    required this.fechaReserva,
+    required this.horaEntrada,
+    required this.horaSalida,
+    required this.cantidadAsistentes,
+    required this.nombreReserva,
+    required this.total,
+    required this.oficinaId,
+  });
 }

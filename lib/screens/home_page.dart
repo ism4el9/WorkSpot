@@ -11,7 +11,6 @@ import 'package:astro_office/screens/search.dart';
 import 'package:astro_office/widgets/bottom_navigation_bar.dart';
 import 'package:astro_office/widgets/office_card.dart';
 import 'package:astro_office/widgets/reserved_office_card.dart';
-import 'package:astro_office/widgets/search_bar_without_icons.dart';
 import 'package:astro_office/widgets/shared_private_toggle.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -105,6 +104,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<void> onCancel() async{
+    
+    await fetchReservedOffices();
+
+  }
   // Obtener oficinas reservadas
   Future<void> fetchReservedOffices() async {
     setState(() {
@@ -175,6 +179,7 @@ class _MyHomePageState extends State<MyHomePage> {
           'oficina_long': office['longitud'],
         };
       }).toList();
+      //print('RESERVED DATA $reservedOffices');
     } catch (e) {
       setState(() {
         hasError = true;
@@ -297,8 +302,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<Map<String, dynamic>> get filteredReservedOffices {
     return reservedOffices.where((office) {
-      if (isSharedSelected) return office['tipo'] == 'Compartido';
-      if (isPrivateSelected) return office['tipo'] == 'Privado';
+      if (isSharedSelected) return office['oficina_tipo'] == 'Compartido';
+      if (isPrivateSelected) return office['oficina_tipo'] == 'Privado';
       return true;
     }).toList();
   }
@@ -473,7 +478,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return AppBar(
         elevation: 0,
         title: Text(
-          'WorkSpot',
+          'WorkSpot: Reserva de Oficinas',
           style: GoogleFonts.firaSans(
             color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.bold,
@@ -502,10 +507,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 10, bottom: 10, left: 10, right: 10),
-          child: SearchBarWithoutIcons(), // Cambiado aquí
-        ),
+        
         SharedPrivateToggle(
           isSharedSelected: isSharedSelected,
           isPrivateSelected: isPrivateSelected,
@@ -533,18 +535,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          ReservationDetailScreen(reserveDetails: office),
+                          ReservationDetailScreen(reserveDetails: office,
+                          onCancelled: fetchReservedOffices,),
                     ),
                   );
                 },
                 child: ReservedOfficeCard(
-                  imageUrl: office['oficina_imagen'] ?? '',
-                  title: office['oficina_nombre'] ?? '',
-                  asistants: office['puestos']?.toString() ?? '1',
-                  time: '${office['hora_inicio']} - ${office['hora_fin']}',
-                  day: office['fecha_reserva'] ?? '',
-                  name: office['nombre_reserva'] ?? '',
-                  type: office['oficina_tipo'] ?? '',
+                  reserveDetails: office
                 ),
               );
             },
@@ -611,7 +608,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   await Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (context) => LoginPage(payment: false)),
+                        builder: (context) => LoginPage()),
                   );
 
                   // Si el resultado es true, actualiza el estado de autenticación

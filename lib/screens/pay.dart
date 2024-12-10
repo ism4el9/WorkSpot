@@ -1,14 +1,16 @@
 import 'package:astro_office/config/officeApi/auth.dart';
 import 'package:astro_office/config/officeApi/database_service.dart';
 import 'package:astro_office/screens/home_page.dart';
+import 'package:astro_office/screens/office_details.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_card_screen.dart'; // Pantalla para añadir tarjetas
 import 'payment_card.dart'; // Modelo de tarjeta de pago
 
 class PaymentPage extends StatefulWidget {
-  final double totalPrice;
+  final Reservation reservation;
 
-  const PaymentPage({super.key, this.totalPrice = 0.0});
+  const PaymentPage({super.key, required this.reservation});
 
   @override
   State<PaymentPage> createState() => _PaymentPageState();
@@ -25,6 +27,54 @@ class _PaymentPageState extends State<PaymentPage> {
   void initState() {
     super.initState();
     _loadPaymentMethods(); // Carga métodos al iniciar
+  }
+
+  Future<bool> createReservation(Reservation reservation) async {
+    try {
+      // Obtener el usuario autenticado
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw Exception('Usuario no autenticado.');
+      }
+
+      // Obtener el usuario_id desde la tabla `usuarios`
+      final usuarioResponse = await Supabase.instance.client
+          .from('usuarios')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+      // Insertar la reserva en la tabla `reservas`
+      final reservaResponse =
+          await Supabase.instance.client.from('reservas').insert({
+        'usuario_id': usuarioResponse['id'],
+        'oficina_id': reservation.oficinaId,
+        'nombre_reserva': reservation.nombreReserva,
+        'fecha_reserva': reservation.fechaReserva.toIso8601String(),
+        'hora_inicio':
+            '${reservation.horaEntrada.hour}:${reservation.horaEntrada.minute}',
+        'hora_fin':
+            '${reservation.horaSalida.hour}:${reservation.horaSalida.minute}',
+        'estado': 'pagado',
+        'puestos': reservation.cantidadAsistentes,
+      }).select();
+      final reservaId = reservaResponse[0]['id'];
+
+      // Insertar el pago en la tabla `pagos`
+      await Supabase.instance.client.from('pagos').insert({
+        'reserva_id': reservaId,
+        'usuario_id': usuarioResponse['id'],
+        'metodo_pago_id': _paymentMethods[0].id,
+        'monto': reservation.total,
+        'estado': 'pendiente',
+      });
+      // Notificar al usuario
+      return true;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al crear la reserva: $e')),
+      );
+      return false;
+    }
   }
 
   // Cargar métodos de pago desde Supabase
@@ -75,7 +125,7 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   // Procesar el pago
-  void _processPayment() {
+  Future<void> _processPayment() async {
     if (_paymentMethods.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -84,33 +134,37 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
+    final bool resultado = await createReservation(widget.reservation);
+
     // Mostrar diálogo de pago exitoso
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Pago Exitoso"),
-        content: const Text("¡Tu Oficina está Reservada!"),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Cierra el diálogo
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MyHomePage(
-                    authService: AuthService(),
-                    results: false,
-                    initialIndex: 1,
+    if (resultado) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Pago Exitoso"),
+          content: const Text("¡Tu Oficina está Reservada!"),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Cierra el diálogo
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MyHomePage(
+                      authService: AuthService(),
+                      results: false,
+                      initialIndex: 1,
+                    ),
                   ),
-                ),
-                (Route<dynamic> route) => false,
-              ); // Regresa a la pantalla principal
-            },
-            child: const Text("Perfecto!"),
-          ),
-        ],
-      ),
-    );
+                  (Route<dynamic> route) => false,
+                ); // Regresa a la pantalla principal
+              },
+              child: const Text("Perfecto!"),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   BoxDecoration _neumorphicDecoration() {
@@ -146,7 +200,7 @@ class _PaymentPageState extends State<PaymentPage> {
               padding: const EdgeInsets.all(16.0),
               decoration: _neumorphicDecoration(),
               child: Text(
-                "Total a Pagar: \$${widget.totalPrice.toStringAsFixed(2)}",
+                "Total a Pagar: \$${widget.reservation.total.toStringAsFixed(2)}",
                 style:
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
@@ -185,7 +239,8 @@ class _PaymentPageState extends State<PaymentPage> {
                                 margin: const EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Colors.green[100] // Fondo verde seleccionado
+                                      ? Colors.green[
+                                          100] // Fondo verde seleccionado
                                       : Theme.of(context).colorScheme.surface,
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
