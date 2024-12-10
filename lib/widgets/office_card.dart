@@ -1,20 +1,12 @@
+import 'package:astro_office/config/officeApi/error_handler.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OfficeCard extends StatefulWidget {
-  final String imageUrl;
-  final String title;
-  final String description;
-  final String price;
-  final String type;
+  final officeData;
 
-  const OfficeCard({
-    super.key,
-    required this.imageUrl,
-    required this.title,
-    required this.description,
-    required this.price,
-    required this.type,
-  });
+  const OfficeCard({super.key, required this.officeData});
 
   @override
   State<OfficeCard> createState() => _OfficeCardState();
@@ -22,11 +14,97 @@ class OfficeCard extends StatefulWidget {
 
 class _OfficeCardState extends State<OfficeCard> {
   bool isFavorite = false;
+  bool isLoading = false;
 
-  void toggleFavorite() {
+  Future<void> checkIfFavorite() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception('Usuario no autenticado.');
+    }
+
+    try {
+      // Obtener usuario_id desde la tabla usuarios
+      final usuarioResponse = await Supabase.instance.client
+          .from('usuarios')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+
+      // Verificar si la oficina está en favoritos
+      final favoriteResponse = await Supabase.instance.client
+          .from('favoritos')
+          .select('usuario_id') // Solo necesitamos saber si existe un registro
+          .eq('usuario_id', usuarioResponse['id'])
+          .eq('oficina_id', widget.officeData['id'])
+          .maybeSingle();
+
+      if (favoriteResponse != null) {
+        setState(() {
+          isFavorite = true;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ErrorHandler.handleError(e))),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    checkIfFavorite(); // Comprobar si la oficina está en favoritos
+  }
+
+  Future<void> toggleFavorite() async {
+    if (isLoading) return; // Evitar múltiples clics
     setState(() {
-      isFavorite = !isFavorite;
+      isLoading = true;
     });
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw Exception('Usuario no autenticado.');
+      }
+
+      final usuarioResponse = await Supabase.instance.client
+          .from('usuarios')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+
+      if (isFavorite) {
+        // Eliminar de favoritos
+        await Supabase.instance.client.from('favoritos').delete().match({
+          'usuario_id': usuarioResponse[
+              'id'], // Obtén el usuario_id desde la tabla usuarios
+          'oficina_id': widget.officeData['id'],
+        });
+      } else {
+        // Agregar a favoritos
+        await Supabase.instance.client.from('favoritos').insert({
+          'usuario_id': usuarioResponse[
+              'id'], // Obtén el usuario_id desde la tabla usuarios
+          'oficina_id': widget.officeData['id'],
+        });
+      }
+
+      setState(() {
+        isFavorite = !isFavorite; // Alternar estado de favorito
+      });
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorHandler.handleError(e))),
+        );
+      }
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -60,11 +138,19 @@ class _OfficeCardState extends State<OfficeCard> {
             ),
             child: Stack(
               children: [
-                Image.asset(
-                  widget.imageUrl,
+                CachedNetworkImage(
+                  imageUrl: widget.officeData['oficinas_imagenes'][0]['url'],
                   width: double.infinity,
                   height: 200,
                   fit: BoxFit.cover,
+                  placeholder: (context, url) => const Center(
+                    child:
+                        CircularProgressIndicator(), // Indicador mientras se carga
+                  ),
+                  errorWidget: (context, url, error) => const Center(
+                    child: Icon(Icons.error,
+                        color: Colors.red), // Ícono cuando falla la carga
+                  ),
                 ),
                 Positioned(
                   top: 8,
@@ -106,29 +192,34 @@ class _OfficeCardState extends State<OfficeCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  widget.officeData['nombre'],
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 5),
-                Text(widget.description),
+                Text(widget.officeData['tipo'] == 'Privado'
+                    ? '${widget.officeData['capacidad']} personas max.'
+                    : '${widget.officeData['capacidad']} puestos.'),
                 const SizedBox(height: 5),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      widget.price,
-                      style: TextStyle(color: Theme.of(context).colorScheme.tertiary),
+                      '\$${widget.officeData['precio_por_hora'].round()}/h',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.tertiary),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: widget.type == 'Privado'
+                        color: widget.officeData['tipo'] == 'Privado'
                             ? Theme.of(context).colorScheme.primary
                             : Theme.of(context).colorScheme.tertiary,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        widget.type,
+                        widget.officeData['tipo'],
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

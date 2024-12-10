@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // Si hubo un error, mostrar el SnackBar
     if (hasError) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        print(errorMessage);
+        //print(errorMessage);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );
@@ -92,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _loadUserDetails() async {
     try {
       final details = await AuthService().getUserDetails();
-      print('Hola $details');
+      //print('Hola $details');
       setState(() {
         userDetails = details;
         userName = details?['nombre'] ?? 'Usuario desconocido';
@@ -115,6 +115,12 @@ class _MyHomePageState extends State<MyHomePage> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('Usuario no autenticado.');
 
+      final usuarioResponse = await Supabase.instance.client
+          .from('usuarios')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+
       // Consulta para obtener reservas y sus oficinas relacionadas
       final response =
           await Supabase.instance.client.from('reservas').select('''
@@ -136,10 +142,10 @@ class _MyHomePageState extends State<MyHomePage> {
             latitud,
             longitud
           )
-        ''').eq('usuario_id', user.id).order('fecha_reserva', ascending: false);
-      print('RESERVED $response');
+        ''').eq('usuario_id', usuarioResponse['id']).order('fecha_reserva', ascending: false);
+      //print('RESERVED $response');
       final data = response as List<dynamic>;
-      print('RESERVED DATA $data');
+      //print('RESERVED DATA $data');
       // Combinar los datos de reservas con los de oficinas
       reservedOffices = data.map((reservation) {
         final office = reservation['oficinas'];
@@ -185,15 +191,24 @@ class _MyHomePageState extends State<MyHomePage> {
           DateFormat('EEEE', 'es_ES') // Obtener el día de la semana en español
               .format(DateTime.now())
               .toLowerCase(); // Ejemplo: "lunes", "martes", etc.
-      print('today $today');
-      final currentTime = DateTime.now();
-      print('currentTime $currentTime');
-      final response =
-          await Supabase.instance.client.from('oficinas').select('*');
+      //print('today $today');
+      //print('currentTime $currentTime');
+      final response = await Supabase.instance.client
+        .from('oficinas')
+        .select('''
+          *,
+          oficinas_imagenes (url),
+          oficinas_extras (
+            extras (
+              nombre,
+              icono
+            )
+          )
+        ''');
 
       final data = response as List<dynamic>;
 
-      print('All $response');
+      //print('All $response');
       allOffices = data.where((office) {
         final disponibilidad =
             office['disponibilidad'] as Map<String, dynamic>?;
@@ -251,7 +266,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
         return false; // No hay horarios disponibles desde hoy en adelante
       }).toList();
-      print('filtered $allOffices');
+      //print('filtered $allOffices');
     } catch (e) {
       setState(() {
         hasError = true;
@@ -422,12 +437,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                 },
                 child: OfficeCard(
-                  imageUrl:
-                      office['imagen_perfil'] ?? 'assets/default_office.jpg',
-                  title: office['nombre'] ?? '',
-                  description: office['descripcion'] ?? '',
-                  price: office['precio_por_hora']?.toString() ?? '',
-                  type: office['tipo'] ?? '',
+                  officeData: office,
                 ),
               );
             },

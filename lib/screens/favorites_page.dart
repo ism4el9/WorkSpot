@@ -58,12 +58,28 @@ class _FavoritesPageState extends State<FavoritesPage> {
         throw Exception('Usuario no autenticado.');
       }
 
-      // Consulta para obtener las oficinas favoritas del usuario actual
+      final usuarioResponse = await Supabase.instance.client
+          .from('usuarios')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+
       final response = await Supabase.instance.client
-          .from('favoritos')
-          .select(
-              'oficina_id, oficinas(*)') // Obtiene datos de la tabla oficinas relacionada
-          .eq('usuario_id',user.id); // Relaciona con el usuario actual
+    .from('favoritos')
+    .select('''
+      oficina_id,
+      oficinas (
+        *,
+        oficinas_imagenes (url),
+        oficinas_extras (
+          extras (
+            nombre,
+            icono
+          )
+        )
+      )
+    ''')
+    .eq('usuario_id', usuarioResponse['id']); // Relaciona con el usuario actual
 
       final data = response as List<dynamic>;
       favoriteOffices =
@@ -80,14 +96,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
     }
   }
 
-  // Método para filtrar las oficinas según el tipo seleccionado
-  List<Map<String, dynamic>> get filteredOffices {
-    return favoriteOffices.where((office) {
-      if (isSharedSelected) return office['tipo'] == 'Compartido';
-      if (isPrivateSelected) return office['tipo'] == 'Privado';
-      return true;
-    }).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,9 +128,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
                         )
                       : Expanded(
                           child: ListView.builder(
-                            itemCount: filteredOffices.length,
+                            itemCount: favoriteOffices.length,
                             itemBuilder: (context, index) {
-                              final office = filteredOffices[index];
+                              final office = favoriteOffices[index];
                               return GestureDetector(
                                 onTap: () async {
                                   final result =
@@ -143,14 +151,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
                                   }
                                 },
                                 child: OfficeCardMini(
-                                  imageUrl: office['imagen_perfil'] ??
-                                      '', // Ajusta si tienes URL de imágenes
-                                  title: office['nombre'] ?? '',
-                                  description: office['descripcion'] ?? '',
-                                  price:
-                                      office['precio_por_hora']?.toString() ??
-                                          '0',
-                                  type: office['tipo'] ?? '',
+                                  officeData: office,
+                                  onFavoriteChanged: fetchFavoriteOffices,
                                 ),
                               );
                             },
