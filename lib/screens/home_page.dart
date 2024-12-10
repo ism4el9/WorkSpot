@@ -350,8 +350,8 @@ class _MyHomePageState extends State<MyHomePage> {
       // Filtrar por disponibilidad (fecha y horarios)
       if (widget.searchFilters?['date'] != null) {
         final selectedDate = widget.searchFilters!['date'] as DateTime;
-        final dayOfWeek =
-            removeDiacritics(DateFormat('EEEE', 'es_ES').format(selectedDate).toLowerCase());
+        final dayOfWeek = removeDiacritics(
+            DateFormat('EEEE', 'es_ES').format(selectedDate).toLowerCase());
 
         final disponibilidad =
             office['disponibilidad'] as Map<String, dynamic>?;
@@ -552,32 +552,42 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: filteredOffices.length,
-            itemBuilder: (context, index) {
-              final office = filteredOffices[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => OfficeDetailScreen(
-                        isUserLoggedIn: isUserLoggedIn,
-                        officeDetails: office,
-                        onFavoriteChanged: fetchAllOffices,
-                      ),
+          child: filteredOffices.isEmpty
+              ? Center(
+                  child: Text(
+                    'No se encontraron oficinas con tus criterios.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
-                  );
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: filteredOffices.length,
+                  itemBuilder: (context, index) {
+                    final office = filteredOffices[index];
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => OfficeDetailScreen(
+                              isUserLoggedIn: isUserLoggedIn,
+                              officeDetails: office,
+                              onFavoriteChanged: fetchAllOffices,
+                            ),
+                          ),
+                        );
 
-                  setState(() {
-                    isUserLoggedIn = widget.authService.isLoggedIn();
-                  });
-                },
-                child: OfficeCard(
-                    officeData: office, authService: widget.authService),
-              );
-            },
-          ),
+                        setState(() {
+                          isUserLoggedIn = widget.authService.isLoggedIn();
+                        });
+                      },
+                      child: OfficeCard(
+                          officeData: office, authService: widget.authService),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -940,11 +950,11 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 String removeDiacritics(String input) {
-      const withDiacritics = 'áéíóúüñÁÉÍÓÚÜÑ';
-      const withoutDiacritics = 'aeiouunAEIOUUN';
+  const withDiacritics = 'áéíóúüñÁÉÍÓÚÜÑ';
+  const withoutDiacritics = 'aeiouunAEIOUUN';
 
-      return input.split('').map((char) {
-        final index = withDiacritics.indexOf(char);
-        return index != -1 ? withoutDiacritics[index] : char;
-      }).join('');
-    }
+  return input.split('').map((char) {
+    final index = withDiacritics.indexOf(char);
+    return index != -1 ? withoutDiacritics[index] : char;
+  }).join('');
+}
