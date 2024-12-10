@@ -51,9 +51,7 @@ class _OfficeCardState extends State<OfficeCard> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ErrorHandler.handleError(e))),
-      );
+      print(ErrorHandler.handleError(e));
     }
   }
 

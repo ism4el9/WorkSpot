@@ -26,7 +26,8 @@ class MyHomePage extends StatefulWidget {
   final List<String>?
       selectedFacilityIds; // Nuevo parámetro para instalaciones seleccionadas
   final double? minPrice; // Rango de precios mínimo
-  final double? maxPrice; // Rango de precios máximo
+  final double? maxPrice;
+  final Map<String, dynamic>? searchFilters;
 
   MyHomePage({
     super.key,
@@ -36,6 +37,7 @@ class MyHomePage extends StatefulWidget {
     this.selectedFacilityIds, // Inicializa el nuevo parámetro
     this.minPrice,
     this.maxPrice,
+    this.searchFilters,
   });
 
   @override
@@ -323,10 +325,89 @@ class _MyHomePageState extends State<MyHomePage> {
   // Método para filtrar las oficinas según el tipo seleccionado
   List<dynamic> get filteredOffices {
     return allOffices.where((office) {
+      // Filtrar por tipo de oficina (Privado o Compartido)
       if (isSharedSelected) return office['tipo'] == 'Compartido';
       if (isPrivateSelected) return office['tipo'] == 'Privado';
-      return true;
+
+      // Filtrar por término de búsqueda (nombre, ubicación, descripción)
+      if (widget.searchFilters?['searchQuery'] != null &&
+          widget.searchFilters!['searchQuery'] != '') {
+        final query = widget.searchFilters!['searchQuery']!.toLowerCase();
+        final matchesQuery = office['nombre'].toLowerCase().contains(query) ||
+            office['ubicacion'].toLowerCase().contains(query) ||
+            office['descripcion'].toLowerCase().contains(query);
+        if (!matchesQuery) return false;
+      }
+
+      // Filtrar por capacidad mínima de asistentes
+      if (widget.searchFilters?['attendees'] != null &&
+          widget.searchFilters!['attendees'] > 0) {
+        if (office['capacidad'] < widget.searchFilters!['attendees']) {
+          return false;
+        }
+      }
+
+      // Filtrar por disponibilidad (fecha y horarios)
+      if (widget.searchFilters?['date'] != null) {
+        final selectedDate = widget.searchFilters!['date'] as DateTime;
+        final dayOfWeek =
+            removeDiacritics(DateFormat('EEEE', 'es_ES').format(selectedDate).toLowerCase());
+
+        final disponibilidad =
+            office['disponibilidad'] as Map<String, dynamic>?;
+        if (disponibilidad == null || !disponibilidad.containsKey(dayOfWeek)) {
+          return false;
+        }
+
+        final horarios = disponibilidad[dayOfWeek] as List<dynamic>;
+        final startTime = widget.searchFilters?['startTime'];
+        final endTime = widget.searchFilters?['endTime'];
+
+        if (startTime != null && endTime != null) {
+          final start =
+              TimeOfDay(hour: startTime.hour, minute: startTime.minute);
+          final end = TimeOfDay(hour: endTime.hour, minute: endTime.minute);
+
+          // Verificar si algún horario disponible cumple con el rango
+          final hasAvailableSlot = horarios.any((horario) {
+            final horarioInicio = TimeOfDay(
+              hour: int.parse(horario['inicio'].split(':')[0]),
+              minute: int.parse(horario['inicio'].split(':')[1]),
+            );
+            final horarioFin = TimeOfDay(
+              hour: int.parse(horario['fin'].split(':')[0]),
+              minute: int.parse(horario['fin'].split(':')[1]),
+            );
+            return horario['estado'] == 'disponible' &&
+                (horarioInicio.hour < end.hour ||
+                    horarioInicio.minute <= end.minute) &&
+                (horarioFin.hour > start.hour ||
+                    horarioFin.minute >= start.minute);
+          });
+
+          if (!hasAvailableSlot) return false;
+        }
+      }
+
+      return true; // Si pasa todos los filtros, incluir en la lista
     }).toList();
+  }
+
+  void _resetFilters() {
+    setState(() {
+      // Restablecer las opciones seleccionadas
+      isSharedSelected = false;
+      isPrivateSelected = false;
+
+      // Restablecer los valores de búsqueda
+      if (widget.searchFilters != null) {
+        widget.searchFilters!['searchQuery'] = '';
+        widget.searchFilters!['date'] = null;
+        widget.searchFilters!['startTime'] = null;
+        widget.searchFilters!['endTime'] = null;
+        widget.searchFilters!['attendees'] = 0;
+      }
+    });
   }
 
   List<Map<String, dynamic>> get filteredReservedOffices {
@@ -857,3 +938,13 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+String removeDiacritics(String input) {
+      const withDiacritics = 'áéíóúüñÁÉÍÓÚÜÑ';
+      const withoutDiacritics = 'aeiouunAEIOUUN';
+
+      return input.split('').map((char) {
+        final index = withDiacritics.indexOf(char);
+        return index != -1 ? withoutDiacritics[index] : char;
+      }).join('');
+    }

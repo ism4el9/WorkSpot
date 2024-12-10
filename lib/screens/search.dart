@@ -28,7 +28,27 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
     }
   }
 
-  bool? isPrivateSelected;
+  void _applySearchFilters() {
+  final filters = {
+    'searchQuery': _sectorController.text.trim(),
+    'date': selectedDate,
+    'startTime': startTime,
+    'endTime': endTime,
+    'attendees': attendees,
+  };
+
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) => MyHomePage(
+        authService: AuthService(),
+        results: true,
+        searchFilters: filters, // Pasar filtros seleccionados
+      ),
+    ),
+  );
+}
+
+
   DateTime? selectedDate;
   TimeOfDay? startTime;
   TimeOfDay? endTime;
@@ -37,7 +57,6 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
 
   void _resetFilters() {
     setState(() {
-      isPrivateSelected = null;
       _sectorController.clear();
       selectedDate = null;
       startTime = null;
@@ -65,18 +84,9 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildNeumorphicToggleButton("Privado", true),
-                  const SizedBox(width: 8),
-                  _buildNeumorphicToggleButton("Compartido", false),
-                ],
-              ),
-              const SizedBox(height: 16),
+              
+              const SizedBox(height: 4),
               _buildNeumorphicTextField(),
-              const SizedBox(height: 16),
-              const SizedBox(height: 8),
               const SizedBox(height: 16),
               const Text(
                 "Fecha de Reserva",
@@ -107,64 +117,6 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
     );
   }
 
-  Widget _buildNeumorphicToggleButton(String text, bool isPrivate) {
-    bool isSelected = isPrivateSelected == isPrivate;
-    return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            if (isSelected)
-              BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                offset: const Offset(4, 4),
-                blurRadius: 10,
-              ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              offset: const Offset(4, 4),
-              blurRadius: 8,
-            ),
-            BoxShadow(
-              color: Colors.white.withOpacity(0.8),
-              offset: const Offset(-4, -4),
-              blurRadius: 8,
-            ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: () {
-            setState(() {
-              isPrivateSelected = isSelected ? null : isPrivate;
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            foregroundColor: isSelected
-                ? Theme.of(context).colorScheme.onPrimary
-                : Theme.of(context).colorScheme.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildNeumorphicTextField() {
     return Container(
@@ -292,16 +244,7 @@ class _OfficeSearchPageState extends State<OfficeSearchPage> {
           child: const Text("Borrar Filtros"),
         ),
         ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (context) => MyHomePage(
-                        authService: AuthService(),
-                        results: true,
-                      )),
-              (Route<dynamic> route) => false,
-            );
-          },
+          onPressed: _applySearchFilters,
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Theme.of(context).colorScheme.onPrimary,
