@@ -128,6 +128,13 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _processPayment() async {
     if (_paymentMethods.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, agrega un método de pago')),
+      );
+      return;
+    }
+
+    if (selectedIndex == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Por favor, selecciona un método de pago')),
       );
