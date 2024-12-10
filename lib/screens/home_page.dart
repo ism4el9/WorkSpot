@@ -25,6 +25,8 @@ class MyHomePage extends StatefulWidget {
   final int initialIndex; // Índice inicial para seleccionar la pestaña
   final List<String>?
       selectedFacilityIds; // Nuevo parámetro para instalaciones seleccionadas
+  final double? minPrice; // Rango de precios mínimo
+  final double? maxPrice; // Rango de precios máximo
 
   MyHomePage({
     super.key,
@@ -32,6 +34,8 @@ class MyHomePage extends StatefulWidget {
     required this.results,
     this.initialIndex = 0, // Valor predeterminado: pestaña "Home"
     this.selectedFacilityIds, // Inicializa el nuevo parámetro
+    this.minPrice,
+    this.maxPrice,
   });
 
   @override
@@ -107,11 +111,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> onCancel() async{
-    
+  Future<void> onCancel() async {
     await fetchReservedOffices();
-
   }
+
   // Obtener oficinas reservadas
   Future<void> fetchReservedOffices() async {
     setState(() {
@@ -227,6 +230,27 @@ class _MyHomePageState extends State<MyHomePage> {
 
       //print('All $response');
       allOffices = data.where((office) {
+        // Filtrar por rango de precios
+        final price = office['precio_por_hora'] as double? ?? 0.0;
+        if (widget.minPrice != null && widget.maxPrice != null) {
+          if (price < widget.minPrice! || price > widget.maxPrice!) {
+            return false;
+          }
+        }
+
+        // Filtrar por instalaciones seleccionadas
+        if (widget.selectedFacilityIds != null &&
+            widget.selectedFacilityIds!.isNotEmpty) {
+          final officeExtras =
+              office['oficinas_extras'] as List<dynamic>? ?? [];
+          final extraNames =
+              officeExtras.map((e) => e['extras']['nombre'] as String).toList();
+          if (!widget.selectedFacilityIds!
+              .every((selected) => extraNames.contains(selected))) {
+            return false;
+          }
+        }
+
         final disponibilidad =
             office['disponibilidad'] as Map<String, dynamic>?;
 
@@ -457,10 +481,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => OfficeDetailScreen(
-                          isUserLoggedIn: isUserLoggedIn,
-                          officeDetails: office,
-                          onFavoriteChanged: fetchAllOffices,
-                          ),
+                        isUserLoggedIn: isUserLoggedIn,
+                        officeDetails: office,
+                        onFavoriteChanged: fetchAllOffices,
+                      ),
                     ),
                   );
 
@@ -469,9 +493,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                 },
                 child: OfficeCard(
-                  officeData: office,
-                  authService: widget.authService
-                ),
+                    officeData: office, authService: widget.authService),
               );
             },
           ),
@@ -525,7 +547,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     return Column(
       children: [
-        
         SharedPrivateToggle(
           isSharedSelected: isSharedSelected,
           isPrivateSelected: isPrivateSelected,
@@ -552,15 +573,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          ReservationDetailScreen(reserveDetails: office,
-                          onCancelled: fetchReservedOffices,),
+                      builder: (context) => ReservationDetailScreen(
+                        reserveDetails: office,
+                        onCancelled: fetchReservedOffices,
+                      ),
                     ),
                   );
                 },
-                child: ReservedOfficeCard(
-                  reserveDetails: office
-                ),
+                child: ReservedOfficeCard(reserveDetails: office),
               );
             },
           ),
@@ -625,8 +645,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ElevatedButton(
                 onPressed: () async {
                   await Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (context) => LoginPage()),
+                    MaterialPageRoute(builder: (context) => LoginPage()),
                   );
 
                   // Si el resultado es true, actualiza el estado de autenticación

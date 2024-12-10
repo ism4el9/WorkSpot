@@ -15,18 +15,23 @@ class _FiltersPageState extends State<FiltersPage> {
   double _minPrice = 5;
   double _maxPrice = 100;
 
-
-
   // Extras seleccionados
   final List<String> _selectedExtras = [];
 
-  // Opciones disponible
-
+  // Opciones disponibles
   final List<String> _extras = [
-    'Pizarras',
-    'Proyectores',
-    'Pantallas',
+    'Wifi',
+    'Impresora',
+    'Estacionamiento',
+    'Aire acondicionado',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Restablecer los filtros en cada ingreso
+    _resetFilters();
+  }
 
   // Alternar selección de instalaciones o extras
   void _toggleSelection(List<String> selectedList, String item) {
@@ -46,16 +51,19 @@ class _FiltersPageState extends State<FiltersPage> {
     });
   }
 
-  // Aplicar los filtros y navegar a search.dart
+  // Aplicar los filtros y navegar a MyHomePage
   void _applyFilters() {
-    Navigator.of(context).pushAndRemoveUntil(
+    Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => MyHomePage(
           authService: AuthService(),
           results: true,
+          selectedFacilityIds:
+              _selectedExtras, // Pasar instalaciones seleccionadas
+          minPrice: _minPrice, // Pasar rango de precios
+          maxPrice: _maxPrice,
         ),
       ),
-      (Route<dynamic> route) => false,
     );
   }
 
@@ -140,7 +148,7 @@ class _FiltersPageState extends State<FiltersPage> {
               "Instalaciones",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            
+
             const SizedBox(height: 8),
             Wrap(
               spacing: 8.0,
