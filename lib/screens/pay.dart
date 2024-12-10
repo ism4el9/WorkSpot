@@ -78,6 +78,13 @@ class _PaymentPageState extends State<PaymentPage> {
   void _processPayment() {
     if (_paymentMethods.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, agrega un método de pago')),
+      );
+      return;
+    }
+
+    if (selectedIndex == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Por favor, selecciona un método de pago')),
       );
@@ -185,7 +192,8 @@ class _PaymentPageState extends State<PaymentPage> {
                                 margin: const EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Colors.green[100] // Fondo verde seleccionado
+                                      ? Colors.green[
+                                          100] // Fondo verde seleccionado
                                       : Theme.of(context).colorScheme.surface,
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [

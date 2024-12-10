@@ -24,12 +24,15 @@ class MyHomePage extends StatefulWidget {
   final AuthService authService;
   bool results;
   final int initialIndex; // Índice inicial para seleccionar la pestaña
+  final List<String>?
+      selectedFacilityIds; // Nuevo parámetro para instalaciones seleccionadas
 
   MyHomePage({
     super.key,
     required this.authService,
     required this.results,
     this.initialIndex = 0, // Valor predeterminado: pestaña "Home"
+    this.selectedFacilityIds, // Inicializa el nuevo parámetro
   });
 
   @override
@@ -122,8 +125,9 @@ class _MyHomePageState extends State<MyHomePage> {
           .single();
 
       // Consulta para obtener reservas y sus oficinas relacionadas
-      final response =
-          await Supabase.instance.client.from('reservas').select('''
+      final response = await Supabase.instance.client
+          .from('reservas')
+          .select('''
           id,
           nombre_reserva,
           fecha_reserva,
@@ -142,7 +146,9 @@ class _MyHomePageState extends State<MyHomePage> {
             latitud,
             longitud
           )
-        ''').eq('usuario_id', usuarioResponse['id']).order('fecha_reserva', ascending: false);
+        ''')
+          .eq('usuario_id', usuarioResponse['id'])
+          .order('fecha_reserva', ascending: false);
       //print('RESERVED $response');
       final data = response as List<dynamic>;
       //print('RESERVED DATA $data');
@@ -193,9 +199,8 @@ class _MyHomePageState extends State<MyHomePage> {
               .toLowerCase(); // Ejemplo: "lunes", "martes", etc.
       //print('today $today');
       //print('currentTime $currentTime');
-      final response = await Supabase.instance.client
-        .from('oficinas')
-        .select('''
+      final response =
+          await Supabase.instance.client.from('oficinas').select('''
           *,
           oficinas_imagenes (url),
           oficinas_extras (
@@ -292,6 +297,19 @@ class _MyHomePageState extends State<MyHomePage> {
     return reservedOffices.where((office) {
       if (isSharedSelected) return office['tipo'] == 'Compartido';
       if (isPrivateSelected) return office['tipo'] == 'Privado';
+      return true;
+    }).toList();
+  }
+
+  // Filtra oficinas en función de las instalaciones seleccionadas
+  List<dynamic> get filteredOfficesByFacilities {
+    return allOffices.where((office) {
+      if (widget.selectedFacilityIds != null &&
+          widget.selectedFacilityIds!.isNotEmpty) {
+        final List<dynamic> officeExtras = office['extras'] ?? [];
+        return widget.selectedFacilityIds!
+            .every((id) => officeExtras.contains(id));
+      }
       return true;
     }).toList();
   }

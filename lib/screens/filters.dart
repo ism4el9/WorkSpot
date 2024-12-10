@@ -1,7 +1,7 @@
-import 'package:astro_office/config/officeApi/auth.dart';
-import 'package:astro_office/screens/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:astro_office/screens/office_details.dart';
 
 class FiltersPage extends StatefulWidget {
   const FiltersPage({super.key});
@@ -15,33 +15,82 @@ class _FiltersPageState extends State<FiltersPage> {
   double _minPrice = 5;
   double _maxPrice = 100;
 
-  // Instalaciones seleccionadas
-  final List<String> _selectedFacilities = [];
+  // IDs de instalaciones seleccionadas
+  final List<int> _selectedFacilityIds = [];
 
-  // Extras seleccionados
-  final List<String> _selectedExtras = [];
+  // Instalaciones cargadas desde Supabase
+  List<Map<String, dynamic>> facilitiesFromDatabase = [];
 
-  // Opciones disponibles
-  final List<String> _facilities = [
-    'Cafetería',
-    'Wi-Fi',
-    'Estacionamiento',
-    'Aire Acondicionado',
-    'Recepción',
-  ];
+  // Oficinas cargadas desde Supabase
+  List<Map<String, dynamic>> allOffices = [];
+  List<Map<String, dynamic>> filteredOffices = [];
 
-  final List<String> _extras = [
-    'Pizarras',
-    'Proyectores',
-    'Pantallas',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchFacilities();
+    _fetchOffices();
+  }
 
-  // Alternar selección de instalaciones o extras
-  void _toggleSelection(List<String> selectedList, String item) {
+  // Cargar instalaciones desde la tabla "extras" en Supabase
+  Future<void> _fetchFacilities() async {
+    try {
+      final response =
+          await Supabase.instance.client.from('extras').select('id, nombre');
+      setState(() {
+        facilitiesFromDatabase = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      print('Error al cargar instalaciones: $e');
+    }
+  }
+
+  // Cargar oficinas desde Supabase
+  Future<void> _fetchOffices() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('oficinas')
+          .select('*, oficinas_extras(extra_id)');
+      setState(() {
+        allOffices = List<Map<String, dynamic>>.from(response);
+        filteredOffices = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      print('Error al cargar oficinas: $e');
+    }
+  }
+
+  // Alternar selección de una instalación
+  void _toggleSelection(int facilityId) {
     setState(() {
-      selectedList.contains(item)
-          ? selectedList.remove(item)
-          : selectedList.add(item);
+      if (_selectedFacilityIds.contains(facilityId)) {
+        _selectedFacilityIds.remove(facilityId);
+      } else {
+        _selectedFacilityIds.add(facilityId);
+      }
+      _filterOffices();
+    });
+  }
+
+  // Filtrar oficinas en tiempo real según instalaciones y rango de precios
+  void _filterOffices() {
+    setState(() {
+      filteredOffices = allOffices.where((office) {
+        final officePrice = office['precio_por_hora'] as double;
+        final isWithinPriceRange =
+            officePrice >= _minPrice && officePrice <= _maxPrice;
+
+        if (_selectedFacilityIds.isEmpty) {
+          return isWithinPriceRange;
+        }
+
+        final officeExtras = office['oficinas_extras'] as List<dynamic>;
+        final extraIds = officeExtras.map((e) => e['extra_id'] as int).toList();
+        final matchesFacilities =
+            _selectedFacilityIds.every((id) => extraIds.contains(id));
+
+        return isWithinPriceRange && matchesFacilities;
+      }).toList();
     });
   }
 
@@ -50,22 +99,9 @@ class _FiltersPageState extends State<FiltersPage> {
     setState(() {
       _minPrice = 5;
       _maxPrice = 100;
-      _selectedFacilities.clear();
-      _selectedExtras.clear();
+      _selectedFacilityIds.clear();
+      filteredOffices = List<Map<String, dynamic>>.from(allOffices);
     });
-  }
-
-  // Aplicar los filtros y navegar a search.dart
-  void _applyFilters() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => MyHomePage(
-          authService: AuthService(),
-          results: true,
-        ),
-      ),
-      (Route<dynamic> route) => false,
-    );
   }
 
   BoxDecoration _neumorphicDecoration() {
@@ -100,135 +136,148 @@ class _FiltersPageState extends State<FiltersPage> {
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Rango de Precio
-            const Text(
-              "Precio por Hora",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: _neumorphicDecoration(),
-              child: Column(
-                children: [
-                  RangeSlider(
-                    values: RangeValues(_minPrice, _maxPrice),
-                    min: 5,
-                    max: 100,
-                    divisions: 19,
-                    labels: RangeLabels(
-                      '\$${_minPrice.round()}',
-                      '\$${_maxPrice.round()}',
-                    ),
-                    onChanged: (RangeValues values) {
-                      setState(() {
-                        _minPrice = values.start;
-                        _maxPrice = values.end;
-                      });
-                    },
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Rango de Precio
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Precio por Hora",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: _neumorphicDecoration(),
+                  child: Column(
                     children: [
-                      Text('Mínimo: \$${_minPrice.round()}'),
-                      Text('Máximo: \$${_maxPrice.round()}'),
+                      RangeSlider(
+                        values: RangeValues(_minPrice, _maxPrice),
+                        min: 5,
+                        max: 100,
+                        divisions: 19,
+                        labels: RangeLabels(
+                          '\$${_minPrice.round()}',
+                          '\$${_maxPrice.round()}',
+                        ),
+                        onChanged: (RangeValues values) {
+                          setState(() {
+                            _minPrice = values.start;
+                            _maxPrice = values.end;
+                          });
+                          _filterOffices();
+                        },
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Mínimo: \$${_minPrice.round()}'),
+                          Text('Máximo: \$${_maxPrice.round()}'),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Instalaciones
-            const Text(
-              "Instalaciones",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8.0,
-              children: _facilities.map((facility) {
-                final isSelected = _selectedFacilities.contains(facility);
-                return Container(
-                  decoration: _neumorphicDecoration(),
-                  child: FilterChip(
-                    label: Text(facility),
-                    selected: isSelected,
-                    selectedColor: Theme.of(context).colorScheme.tertiary,
-                    onSelected: (_) =>
-                        _toggleSelection(_selectedFacilities, facility),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-
-            // Extras
-            const Text(
-              "Amenidades Extra",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8.0,
-              children: _extras.map((extra) {
-                final isSelected = _selectedExtras.contains(extra);
-                return Container(
-                  decoration: _neumorphicDecoration(),
-                  child: FilterChip(
-                    label: Text(extra),
-                    selected: isSelected,
-                    selectedColor: Theme.of(context).colorScheme.tertiary,
-                    onSelected: (_) => _toggleSelection(_selectedExtras, extra),
-                  ),
-                );
-              }).toList(),
-            ),
-            const Spacer(), // Empuja los botones hacia abajo
-
-            // Botones de Limpiar Filtros y Aplicar
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1F4E78), // Color azul
-                    foregroundColor: Colors.white, // Texto blanco
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _resetFilters,
-                  child: const Text("Limpiar Filtros"),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1F4E78), // Color azul
-                    foregroundColor: Colors.white, // Texto blanco
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _applyFilters,
-                  child: const Text("Aplicar"),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          // Instalaciones
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Instalaciones",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration:
+                      _neumorphicDecoration(), // Aplicar decoración neumórfica
+                  child: facilitiesFromDatabase.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : Wrap(
+                          spacing: 8.0,
+                          children: facilitiesFromDatabase.map((facility) {
+                            final isSelected =
+                                _selectedFacilityIds.contains(facility['id']);
+                            return FilterChip(
+                              label: Text(facility['nombre']),
+                              selected: isSelected,
+                              selectedColor:
+                                  Theme.of(context).colorScheme.tertiary,
+                              onSelected: (_) =>
+                                  _toggleSelection(facility['id']),
+                            );
+                          }).toList(),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          // Oficinas filtradas
+          Expanded(
+            child: filteredOffices.isEmpty
+                ? const Center(
+                    child:
+                        Text('No hay oficinas que coincidan con los filtros.'),
+                  )
+                : ListView.builder(
+                    itemCount: filteredOffices.length,
+                    itemBuilder: (context, index) {
+                      final office = filteredOffices[index];
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OfficeDetailScreen(
+                                officeDetails: office,
+                                isUserLoggedIn: true,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: _neumorphicDecoration(),
+                          child: ListTile(
+                            title: Text(
+                              office['nombre'],
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                            subtitle: Text(
+                              office['descripcion'] ?? '',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            trailing: Text(
+                              '\$${office['precio_por_hora']}/h',
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _resetFilters,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: const Icon(Icons.refresh),
       ),
     );
   }
