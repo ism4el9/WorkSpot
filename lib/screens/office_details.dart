@@ -38,6 +38,25 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
   bool isFavorite = false;
   bool isLoading = false;
 
+  List<Map<String, dynamic>> _getOrderedDays(Map<String, dynamic> disponibilidad) {
+    // Orden fijo de los días de la semana
+    const orderedDays = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+
+    return orderedDays.map((day) {
+      return {
+        'day': day,
+        'horarios': disponibilidad[day] ?? [],
+      };
+    }).toList();
+  }
+
+  String _capitalize(String day) {
+    if (day == 'miercoles') {
+      return 'Miércoles'; // Agregamos la tilde a 'miércoles'
+    }
+    return day[0].toUpperCase() + day.substring(1).toLowerCase(); // Capitalizamos normalmente
+  }
+
   Future<void> checkIfFavorite() async {
     final user = Supabase.instance.client.auth.currentUser;
 
@@ -509,9 +528,10 @@ class _OfficeDetailScreenState extends State<OfficeDetailScreen> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                ...widget.officeDetails['disponibilidad'].entries.map((entry) {
-                  final day = entry.key; // Día de la semana
-                  final horarios = entry.value as List<dynamic>;
+                ..._getOrderedDays(widget.officeDetails['disponibilidad'])
+                    .map((entry) {
+                  final day = entry['day']; // Día de la semana
+                  final horarios = entry['horarios'] as List<dynamic>;
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

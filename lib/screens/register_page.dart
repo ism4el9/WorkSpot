@@ -182,7 +182,7 @@ class RegisterPage extends StatelessWidget {
                         );
                       }
 
-                      if (!reservation) {
+                      if (! (reservation != null)) {
                         if (context.mounted) Navigator.of(context).pop();
                       } else {
                         var result = false;
