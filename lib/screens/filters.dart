@@ -52,8 +52,14 @@ class _FiltersPageState extends State<FiltersPage> {
           .from('oficinas')
           .select('*, oficinas_extras(extra_id)');
       setState(() {
-        allOffices = List<Map<String, dynamic>>.from(response);
-        filteredOffices = List<Map<String, dynamic>>.from(response);
+        allOffices = List<Map<String, dynamic>>.from(response).map((office) {
+          return {
+            ...office,
+            'oficinas_extras':
+                office['oficinas_extras'] ?? [], // Garantizar que no sea null
+          };
+        }).toList();
+        filteredOffices = List<Map<String, dynamic>>.from(allOffices);
       });
     } catch (e) {
       print('Error al cargar oficinas: $e');
@@ -76,15 +82,17 @@ class _FiltersPageState extends State<FiltersPage> {
   void _filterOffices() {
     setState(() {
       filteredOffices = allOffices.where((office) {
-        final officePrice = office['precio_por_hora'] as double;
+        final officePrice = office['precio_por_hora'] as double? ?? 0.0;
         final isWithinPriceRange =
             officePrice >= _minPrice && officePrice <= _maxPrice;
 
+        // Si no hay instalaciones seleccionadas, solo filtra por precio
         if (_selectedFacilityIds.isEmpty) {
           return isWithinPriceRange;
         }
 
-        final officeExtras = office['oficinas_extras'] as List<dynamic>;
+        // Validar instalaciones
+        final officeExtras = office['oficinas_extras'] as List<dynamic>? ?? [];
         final extraIds = officeExtras.map((e) => e['extra_id'] as int).toList();
         final matchesFacilities =
             _selectedFacilityIds.every((id) => extraIds.contains(id));
@@ -233,6 +241,23 @@ class _FiltersPageState extends State<FiltersPage> {
                     itemCount: filteredOffices.length,
                     itemBuilder: (context, index) {
                       final office = filteredOffices[index];
+
+                      // Validaciones para evitar errores
+                      final officeId = office['id'] ?? 'Sin ID';
+                      final officeName =
+                          office['nombre'] ?? 'Oficina desconocida';
+                      final officeDescription =
+                          office['descripcion'] ?? 'Sin descripción';
+                      final officePrice = office['precio_por_hora'] ??
+                          0.0; // Valor predeterminado
+                      final officeImages =
+                          (office['oficinas_imagenes'] as List<dynamic>?)
+                                  ?.map((img) => img['url'] as String?)
+                                  .toList() ??
+                              [];
+                      final firstImageUrl =
+                          officeImages.isNotEmpty ? officeImages[0] : null;
+
                       return GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -240,7 +265,7 @@ class _FiltersPageState extends State<FiltersPage> {
                             MaterialPageRoute(
                               builder: (context) => OfficeDetailScreen(
                                 officeDetails: office,
-                                isUserLoggedIn: true,
+                                isUserLoggedIn: false, // Sin importar login
                               ),
                             ),
                           );
@@ -250,16 +275,24 @@ class _FiltersPageState extends State<FiltersPage> {
                               horizontal: 16, vertical: 8),
                           decoration: _neumorphicDecoration(),
                           child: ListTile(
+                            leading: firstImageUrl != null
+                                ? Image.network(
+                                    firstImageUrl,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Icon(Icons.image_not_supported),
                             title: Text(
-                              office['nombre'],
+                              officeName,
                               style: const TextStyle(fontSize: 18),
                             ),
                             subtitle: Text(
-                              office['descripcion'] ?? '',
+                              officeDescription,
                               style: const TextStyle(fontSize: 14),
                             ),
                             trailing: Text(
-                              '\$${office['precio_por_hora']}/h',
+                              '\$${officePrice.toStringAsFixed(2)}/h',
                               style: const TextStyle(
                                 color: Colors.green,
                                 fontWeight: FontWeight.bold,
