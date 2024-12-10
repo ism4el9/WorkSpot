@@ -1,3 +1,4 @@
+import 'package:astro_office/config/officeApi/auth.dart';
 import 'package:astro_office/config/officeApi/error_handler.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -5,8 +6,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OfficeCard extends StatefulWidget {
   final officeData;
+  final AuthService authService;
 
-  const OfficeCard({super.key, required this.officeData});
+  const OfficeCard({
+    super.key,
+    required this.officeData,
+    required this.authService,
+  });
 
   @override
   State<OfficeCard> createState() => _OfficeCardState();
@@ -54,10 +60,18 @@ class _OfficeCardState extends State<OfficeCard> {
   @override
   void initState() {
     super.initState();
-    checkIfFavorite(); // Comprobar si la oficina está en favoritos
+    if (widget.authService.isLoggedIn()) {
+      checkIfFavorite();
+    }
+// Comprobar si la oficina está en favoritos
   }
 
   Future<void> toggleFavorite() async {
+    if (widget.authService.isLoggedIn()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Inicia Sesión para guardar un Favorito!!')),
+        );
+    }
     if (isLoading) return; // Evitar múltiples clics
     setState(() {
       isLoading = true;
@@ -197,9 +211,7 @@ class _OfficeCardState extends State<OfficeCard> {
                       fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 5),
-                Text(widget.officeData['tipo'] == 'Privado'
-                    ? '${widget.officeData['capacidad']} personas max.'
-                    : '${widget.officeData['capacidad']} puestos.'),
+                Text('${widget.officeData['capacidad']} personas max.'),
                 const SizedBox(height: 5),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

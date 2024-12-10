@@ -140,7 +140,13 @@ class _MyHomePageState extends State<MyHomePage> {
             nombre,
             descripcion,
             ubicacion,
-            imagen_perfil,
+            oficinas_imagenes (url),
+            oficinas_extras (
+              extras (
+                nombre,
+                icono
+              )
+            ),
             precio_por_hora,
             tipo,
             latitud,
@@ -167,7 +173,8 @@ class _MyHomePageState extends State<MyHomePage> {
           'oficina_nombre': office['nombre'],
           'oficina_descripcion': office['descripcion'],
           'oficina_ubicacion': office['ubicacion'],
-          'oficina_imagen': office['imagen_perfil'],
+          'oficina_imagen': office['oficinas_imagenes'],
+          'oficinas_extras': office['oficinas_extras'],
           'oficina_precio': office['precio_por_hora'],
           'oficina_tipo': office['tipo'],
           'oficina_lat': office['latitud'],
@@ -446,7 +453,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     MaterialPageRoute(
                       builder: (context) => OfficeDetailScreen(
                           isUserLoggedIn: isUserLoggedIn,
-                          officeDetails: office),
+                          officeDetails: office,
+                          onFavoriteChanged: fetchAllOffices,
+                          ),
                     ),
                   );
 
@@ -456,6 +465,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 child: OfficeCard(
                   officeData: office,
+                  authService: widget.authService
                 ),
               );
             },

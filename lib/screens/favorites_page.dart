@@ -8,7 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class FavoritesPage extends StatefulWidget {
   final bool isUserLoggedIn;
 
-  const FavoritesPage({super.key, required this.isUserLoggedIn});
+
+  const FavoritesPage({super.key, required this.isUserLoggedIn,});
 
   @override
   State<FavoritesPage> createState() => _FavoritesPageState();
@@ -138,7 +139,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                                     MaterialPageRoute(
                                       builder: (context) => OfficeDetailScreen(
                                         isUserLoggedIn: widget.isUserLoggedIn,
-                                        officeDetails: office
+                                        officeDetails: office,
                                       ),
                                     ),
                                   );
